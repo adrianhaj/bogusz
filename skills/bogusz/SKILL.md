@@ -1,7 +1,7 @@
 ---
 name: bogusz
-description: Bogusz, a testing orchestrator for any project. Use for /bogusz, or when asked to test a feature, PR or API, plan tests, investigate a failing test, validate a bug and draft or file a GitHub issue with repro steps, explore edge cases, run a regression check, write a test report, set up a project's test profile, or analyze a past session (analyze-session last|<session-id>).
-argument-hint: "<what to test> | bug <report> | setup | analyze-session last|<id> | report | regression-test"
+description: Bogusz, a testing orchestrator for any project. Use for /bogusz, or when asked to test a feature, PR or API, plan tests, investigate a failing test, validate a bug and draft or file a GitHub issue with repro steps, test the UI with screenshots, run performance/load tests or security scans and authz tests, explore edge cases, run a regression check, write a test report, set up a project's test profile, or analyze a past session (analyze-session last|<session-id>).
+argument-hint: "<what to test> | bug <report> | ui <flow> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test"
 allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *)
 ---
 
@@ -30,6 +30,9 @@ Say which profile you used in one line (`profile: <path>`). Check every fact you
 | `report` | Mode E for what this session has tested so far |
 | `investigate …`, "why does … fail" | Mode D |
 | `bug …`, "validate this bug", "is this a bug", "file an issue for …" | Mode F |
+| `ui …`, "screenshot", "check the page/flow" | Mode G |
+| `perf …`, "load test", "latency", "benchmark" | Mode H |
+| `security …`, "vulnerabilities", "authz", "pentest this" | Mode I |
 | `explore …`, "edge cases for …" | Mode A, then Mode B |
 | `plan …`, "plan tests for …" | Mode A, then Mode B. Run no tests |
 | `regression-test` | Mode B on the current branch's diff (`git diff <base>...HEAD`), then Mode C |
@@ -86,6 +89,31 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 6. **Find the target repo**: the one that owns the faulty code, as `owner/repo` from `git -C <repo> remote get-url origin`, unless the profile's `## Issue tracker` says otherwise. **Check for duplicates**: `gh issue list -R <owner/repo> --state all --search "<key terms>"`.
 7. **Draft the issue** with the bug template in `${CLAUDE_SKILL_DIR}/references/reporting.md`. Redact every log and output: no tokens, passwords, internal URLs with credentials, or customer data. Save it to `~/.bogusz/reports/YYYY-MM-DD-bug-<slug>.md`.
 8. **File it only on an explicit yes.** Show the target repo, the title, the labels and the body, then ask. Only after the user approves, run `gh issue create -R <owner/repo> --title "<title>" --body-file <draft> [--label bug]` and print the URL. Never file `not reproduced` or `environment` verdicts as product bugs.
+
+## Mode G: UI
+
+1. **Choose the target.** Use the UI dev server from the profile (start it in the background) or a URL the user gave in this request. A shared or deployed environment follows the Mode C rules. Credentials come only from environment variables the profile names; never type or print them.
+2. **Hand the flow, base URL, a slug and the profile path to `bogusz:blazej-ui`.** It runs Playwright, preferring the project's existing specs, saves screenshots under `~/.bogusz/ui/<slug>/`, and returns per-step results with console errors and failed requests.
+3. **Interactive checks.** If the user asks for their own browser (for example the Claude in Chrome extension) or the built-in browser, or the flow needs their logged-in session, drive those browser tools yourself instead: take screenshots, read the console and network, and never type passwords.
+4. **Check its claims.** Open the key screenshots (Read the PNG) before you report a visual result.
+5. **Report it.** Use the UI section of the test report, with screenshot paths. If a failure is a real bug, Mode F turns it into an issue, and the screenshots go into it.
+
+## Mode H: performance
+
+- **Code level:** use the stack's benchmark tool on the base and on the change, with repeats. For Go: `go test -bench=<Name> -benchmem -run='^$' -count=6 ./<pkg>/...`, compared with `benchstat` if it is installed. For Python: `pytest-benchmark` or `pyperf` if the project uses them. For JS: the project's own bench script. Report per-op time and allocations with the deltas.
+- **Load:**
+  - Use the load script from the profile (for example a k6 or Locust file) if there is one; otherwise propose a minimal k6 script and show it before running.
+  - Run it only against a target the profile's `## Environments` marks safe, a local one, or one the user named in this request.
+  - State the virtual users, duration and target first. Load on a shared environment needs an explicit yes, because it affects other people.
+  - Report p50/p95/p99 latency, the error rate, the throughput and the thresholds.
+- **Baselines:** compare with the previous run in `~/.bogusz/reports/` when there is one. Never call a single run a regression or an improvement: noise needs repeated runs.
+
+## Mode I: security
+
+1. **Run the scanners**, read-only, that match the stack (the profile may list them): `govulncheck ./...` (Go), `pip-audit` (Python), `npm audit --omit=dev` (JS), `cargo audit` (Rust), and `trivy fs --scanners vuln,secret,misconfig .` for any repo. Respect the project's ignore files, such as `.trivyignore`. Say which scanners aren't installed instead of skipping them silently.
+2. **Review the code.** Hand the area or diff, and the profile path, to `bogusz:blazej-security`. It returns authorization, input and sensitive-data gaps as concrete negative tests.
+3. **Prove the gaps.** Turn the high and medium gaps into tests in the repo's own framework (another tenant's resource → denied, malformed or oversized input → rejected, no secrets in errors or logs). Run them. A gap is `confirmed` only when a test shows it.
+4. **Stay non-destructive.** Never run exploit or fuzz traffic against shared environments, never use real user tokens, and never exfiltrate data. Findings that matter go through Mode F as issues. Mark security-sensitive ones for private handling (for example a GitHub security advisory instead of a public issue), and ask before filing.
 
 ## Mode E: report
 
