@@ -92,7 +92,7 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 
 ## Mode G: UI
 
-1. **Choose the target.** Use the UI dev server from the profile (start it in the background) or a URL the user gave in this request. A shared or deployed environment follows the Mode C rules. Credentials come only from environment variables the profile names; never type or print them.
+1. **Choose the target.** Use the UI dev server from the profile (start it in the background) or a URL the user gave in this request. A shared or deployed environment follows the Mode C rules. Credentials come only from environment variables the profile names; never type or print them. If you started a dev server, stop it when the checks are done.
 2. **Hand the flow, base URL, a slug and the profile path to `bogusz:blazej-ui`.** It runs Playwright, preferring the project's existing specs, saves screenshots under `~/.bogusz/ui/<slug>/`, and returns per-step results with console errors and failed requests.
 3. **Interactive checks.** If the user asks for their own browser (for example the Claude in Chrome extension) or the built-in browser, or the flow needs their logged-in session, drive those browser tools yourself instead: take screenshots, read the console and network, and never type passwords.
 4. **Check its claims.** Open the key screenshots (Read the PNG) before you report a visual result.
@@ -100,7 +100,7 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 
 ## Mode H: performance
 
-- **Code level:** use the stack's benchmark tool on the base and on the change, with repeats. For Go: `go test -bench=<Name> -benchmem -run='^$' -count=6 ./<pkg>/...`, compared with `benchstat` if it is installed. For Python: `pytest-benchmark` or `pyperf` if the project uses them. For JS: the project's own bench script. Report per-op time and allocations with the deltas.
+- **Code level:** use the stack's benchmark tool on the base and on the change, with repeats. Build the base in a separate worktree (`git worktree add <tmp dir> <base>`, removed afterwards); never stash, switch branches or check out files in the user's tree. For Go: `go test -bench=<Name> -benchmem -run='^$' -count=6 ./<pkg>/...`, compared with `benchstat` if it is installed. For Python: `pytest-benchmark` or `pyperf` if the project uses them. For JS: the project's own bench script. Report per-op time and allocations with the deltas.
 - **Load:**
   - Use the load script from the profile (for example a k6 or Locust file) if there is one; otherwise propose a minimal k6 script and show it before running.
   - Run it only against a target the profile's `## Environments` marks safe, a local one, or one the user named in this request.
@@ -112,7 +112,7 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 
 1. **Run the scanners**, read-only, that match the stack (the profile may list them): `govulncheck ./...` (Go), `pip-audit` (Python), `npm audit --omit=dev` (JS), `cargo audit` (Rust), and `trivy fs --scanners vuln,secret,misconfig .` for any repo. Respect the project's ignore files, such as `.trivyignore`. Say which scanners aren't installed instead of skipping them silently.
 2. **Review the code.** Hand the area or diff, and the profile path, to `bogusz:blazej-security`. It returns authorization, input and sensitive-data gaps as concrete negative tests.
-3. **Prove the gaps.** Turn the high and medium gaps into tests in the repo's own framework (another tenant's resource → denied, malformed or oversized input → rejected, no secrets in errors or logs). Run them. A gap is `confirmed` only when a test shows it.
+3. **Prove the gaps.** Turn the high and medium gaps into tests in the repo's own framework (another tenant's resource → denied, malformed or oversized input → rejected, no secrets in errors or logs). Run them. A gap is `confirmed` only when a test shows it. Leave the new tests uncommitted and list the files you added; commit them only if the user asks.
 4. **Stay non-destructive.** Never run exploit or fuzz traffic against shared environments, never use real user tokens, and never exfiltrate data. Findings that matter go through Mode F as issues. Mark security-sensitive ones for private handling (for example a GitHub security advisory instead of a public issue), and ask before filing.
 
 ## Mode E: report
