@@ -16,8 +16,8 @@ Request: `$ARGUMENTS`
 Everything you know about this project comes from its profile and its code. Before any mode, find the profile, in this order:
 
 1. `.bogusz/profile.md` at the git toplevel of the current directory.
-2. A file in `~/.bogusz/profiles/*.md` whose `## Roots` section lists a folder containing the current directory.
-3. None found: run **Setup** first, unless the request is `report`.
+2. A file in `~/.bogusz/profiles/*.md` whose `## Roots` section lists a folder containing the current directory. Find the files with the Glob tool (pattern `*.md`, path: your home directory's `.bogusz/profiles`), not `ls`, and Read each candidate's `## Roots`.
+3. None found: run **Setup** before anything else, however small the project looks, unless the request is `report`. If the user declines a profile, continue from the code alone and say so.
 
 Say which profile you used in one line (`profile: <path>`). Check every fact you use from it against the current code; code and test results beat the profile. A section marked `TODO (human)` is unknown, not empty.
 
