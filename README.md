@@ -27,16 +27,16 @@ You have three ways to create the profile:
 Create a Bogusz test profile for this project. Bogusz is a QA agent; the profile tells it how to test the project. Work read-only until I confirm.
 
 1. Find the repos: the current folder if it is a git repo, otherwise each direct subfolder that contains .git.
-2. In each repo, read only these files when present: Makefile, justfile, Taskfile.yml, package.json, go.mod, pyproject.toml, setup.cfg, tox.ini, noxfile.py, Cargo.toml, pom.xml, build.gradle*, .github/workflows/*.yml, .gitlab-ci.yml, playwright.config.*, docker-compose*.yml, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, README*. Don't run any command except listing files.
-3. Prefer the commands CI actually runs over the ones docs suggest. Give the narrowest form the tool supports (one package, one file, one test).
-4. Tag every line [found: <file>:<line>] when you read it, or [guess] when you inferred it.
+2. In each repo, read only these files when present: Makefile, justfile, Taskfile.yml, package.json, go.mod, pyproject.toml, setup.cfg, tox.ini, noxfile.py, Cargo.toml, pom.xml, build.gradle*, .github/workflows/*.yml, .gitlab-ci.yml, playwright.config.*, docker-compose*.yml, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, README*. You may list folders to find where unit, integration and E2E tests live. Don't run any other command.
+3. Prefer the commands CI actually runs over the ones docs suggest. Give the narrowest form the tool supports (one package, one file, one test); a narrow form you didn't see written down is [guess].
+4. Tag every line or table row [found: <file>:<line>] when you read it, or [guess] when you inferred it; tag each part of a row that mixes both. Roots lines are plain paths with no tag. Write "none" in any section where you found nothing.
 5. Never copy a password, token or key. Write only the names of the environment variables that hold them.
 6. Leave "## Environments" and "## Forbidden commands" as "TODO (human)". You may list candidates under them (a deploy target, a default URL), each tagged [found: …], as hints. Don't decide which environment is safe.
 7. Fill exactly these sections, in this order:
 
 # <Project> test profile
 ## Roots
-One absolute folder per line: the repo(s) this profile covers.
+One absolute folder per line, no tag: the repo(s) this profile covers.
 ## Repos and test commands
 Table: repo | language | scoped test command | needs (Docker, services, setup) | source.
 ## UI, performance and security entry points
