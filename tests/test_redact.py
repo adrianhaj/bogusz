@@ -95,9 +95,31 @@ class RedactTextTest(unittest.TestCase):
             with self.subTest(text=text[:40]):
                 self.assertNotIn(secret, redact_text(text))
 
+    def test_probe_leaks(self):
+        cases = [
+            ("-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\nAAAAtruncated", "b3BlbnNzaC1rZXktdjEAAAAA"),
+            ('{"auths": {"ghcr.io": {"auth": "dXNlcjpkb2NrZXJwdw=="}}}', "dXNlcjpkb2NrZXJwdw=="),
+            ("key sk_live_51HxAbCdEfGhIjKlMnOp end", "sk_live_51HxAbCdEfGhIjKlMnOp"),
+            ("//registry.npmjs.org/:_authToken=npm_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789", "npm_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"),
+            ("access ya29.a0AfH6SMBxYzAbCdEfGhIjKlMn end", "ya29.a0AfH6SMBxYzAbCdEfGhIjKlMn"),
+            ("curl https://hooks.slack.com/services/T0001/B0002/XyZsecretHook1", "XyZsecretHook1"),
+            ("https://acct.blob.core.windows.net/c/f?sv=2022-11-02&sig=AbC%2Bsas123%3D&se=x", "AbC%2Bsas123%3D"),
+            ("sshpass -p sshpw77 ssh host", "sshpw77"),
+            ("redis-cli -h cache -a redispw88 ping", "redispw88"),
+        ]
+        for text, secret in cases:
+            with self.subTest(text=text[:30]):
+                self.assertNotIn(secret, redact_text(text))
+
+    def test_pytest_node_ids_not_mangled(self):
+        for s in ["pytest tests/test_token.py::test_refresh", "FAILED tests/unit/test_password.py::TestReset::test_x"]:
+            with self.subTest(s=s):
+                self.assertEqual(redact_text(s), s)
+
     def test_long_line_is_fast(self):
         import time
-        for s in ["a" * 50000, "a-" * 25000 + "token", ".".join(["x"] * 25000)]:
+        for s in ["a" * 50000, "a-" * 25000 + "token", ".".join(["x"] * 25000), "sshpass " + "x " * 25000,
+                  "redis-cli " + "x " * 25000, "-----BEGIN RSA PRIVATE KEY-----" + "a" * 50000]:
             start = time.monotonic()
             redact_text(s)
             self.assertLess(time.monotonic() - start, 1.0)
@@ -160,6 +182,11 @@ class RedactValueTest(unittest.TestCase):
         self.assertEqual(out["env"]["CLIENT_SECRET"], "[REDACTED:key]")
         self.assertEqual(out["env"]["PKG"], "./internal/...")
         self.assertEqual(out["headers"][0]["Authorization"], "[REDACTED:key]")
+
+    def test_more_secret_dict_keys(self):
+        out = redact({"access_key": "a1", "AccountKey": "a2", "client_key": "a3", "auth": "a4", "author": "Ann"})
+        self.assertEqual([out[k] for k in ("access_key", "AccountKey", "client_key", "auth")], ["[REDACTED:key]"] * 4)
+        self.assertEqual(out["author"], "Ann")
 
 
 if __name__ == "__main__":
