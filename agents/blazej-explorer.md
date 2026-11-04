@@ -37,7 +37,7 @@ Tag every claim `[read: path:line]` or `[inferred]`. An empty section says "none
 Bogusz gives you a project folder (or a parent folder holding several repos) and the profile template path. You draft the profile.
 
 1. Read the template.
-2. Find the repos: the folder itself if it is a git repo, otherwise each direct subfolder that has a `.git`.
+2. Find the repos: the folder itself if it is a git repo, otherwise each direct subfolder that has a `.git`. Glob `*/.git/HEAD` finds clones and `*/.git` finds worktrees, whose `.git` is a file.
 3. In each repo, read only these when present: `Makefile`, `justfile`, `Taskfile.yml`, `package.json`, `go.mod`, `pyproject.toml`, `setup.cfg`, `tox.ini`, `noxfile.py`, `Cargo.toml`, `pom.xml`, `build.gradle*`, `.github/workflows/*.yml`, `.gitlab-ci.yml`, `playwright.config.*`, `docker-compose*.yml`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `README*`.
 4. Prefer the commands CI actually runs over the ones docs suggest. Give the narrowest form the tool supports (one package, file or test); a narrow form you didn't see written down is `[guess]`. List folders (Glob) to find where unit, integration and E2E tests live.
 5. Look for schemas, protos, OpenAPI specs and shared-library imports between the repos for `## Cross-repo / API consumers`.

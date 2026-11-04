@@ -31,6 +31,7 @@ Say which profile you used in one line (`profile: <path>`). Check every fact you
 | `investigate …`, "why does … fail" | Mode D |
 | `bug …`, "validate this bug", "is this a bug", "file an issue for …" | Mode F |
 | `explore …`, "edge cases for …" | Mode A, then Mode B |
+| `plan …`, "plan tests for …" | Mode A, then Mode B. Run no tests |
 | `regression-test` | Mode B on the current branch's diff (`git diff <base>...HEAD`), then Mode C |
 | anything else ("test X", "test this PR") | Mode A (skip it if this session already mapped the area), B, C, E |
 
@@ -92,10 +93,10 @@ Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md`. Print it,
 
 ## Session analysis
 
-1. Write the redacted digest. Only `sessions.py` reads the transcript; you don't open it. Pass one `--root` per line of the profile's `## Roots` (or none, to use the current directory) and one `--e2e` per path in `## E2E`:
-   `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py show <last|id> --root <root> --e2e <path> --exclude ${CLAUDE_SESSION_ID} --out ~/.bogusz/digest.json`
+1. Write the redacted digest. Only `sessions.py` reads the transcript; you don't open it. Pass one `--root` per line of the profile's `## Roots` (or none, to use the current directory) and one `--e2e` per path line in `## E2E` (the path alone, without its `[found: …]` or `[guess]` tag; skip area and command lines):
+   `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py show <last|id> --root <root> --e2e <path> --exclude ${CLAUDE_SESSION_ID} --out ~/.bogusz/digests/${CLAUDE_SESSION_ID}.json`
    It prints the path and the line count. On exit code 2, show the stderr message and stop. `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py list --root <root>` shows recent sessions if the user needs an id.
-2. Hand `bogusz:blazej-analyst` these three paths, plus the line count: `~/.bogusz/digest.json`, `${CLAUDE_SKILL_DIR}/references/reporting.md` and the profile.
+2. Hand `bogusz:blazej-analyst` these three paths, plus the line count: `~/.bogusz/digests/${CLAUDE_SESSION_ID}.json`, `${CLAUDE_SKILL_DIR}/references/reporting.md` and the profile.
 3. Check its report against the digest where the conclusions matter, add your own judgement, then save it as in Mode E.
 4. Its "Proposed profile updates" stay proposals. Show them to the user; edit the profile only on a yes.
 
