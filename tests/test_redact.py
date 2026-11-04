@@ -188,6 +188,12 @@ class RedactValueTest(unittest.TestCase):
         self.assertEqual([out[k] for k in ("access_key", "AccountKey", "client_key", "auth")], ["[REDACTED:key]"] * 4)
         self.assertEqual(out["author"], "Ann")
 
+    def test_secret_values_of_any_shape(self):
+        out = redact({"password": ["hunter2"], "creds": {"pass": "hunter3"}, "tokens": None})
+        self.assertEqual(out["password"], "[REDACTED:key]")
+        self.assertEqual(out["creds"]["pass"], "[REDACTED:key]")
+        self.assertIsNone(out["tokens"])
+
 
 if __name__ == "__main__":
     unittest.main()

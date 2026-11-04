@@ -47,7 +47,7 @@ _PATTERNS = [
 ]
 
 _SECRET_KEY = re.compile(
-    r"(?i)secret|password|passwd|token|api[_-]?key|authorization|cookie|private[_-]?key|credential|^auth$"
+    r"(?i)secret|password|passwd|token|api[_-]?key|authorization|cookie|private[_-]?key|credential|^(?:auth|pass)$"
     r"|(?:access|account|client|master|encryption|signing|session|license|storage)[_-]?key"
 )
 
@@ -71,7 +71,7 @@ def redact(value: object) -> object:
         return [redact(v) for v in value]
     if isinstance(value, dict):
         return {
-            k: "[REDACTED:key]" if _SECRET_KEY.search(str(k)) and isinstance(v, (str, int)) else redact(v)
+            k: "[REDACTED:key]" if _SECRET_KEY.search(str(k)) and v is not None else redact(v)
             for k, v in value.items()
         }
     return value
