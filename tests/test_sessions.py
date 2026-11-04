@@ -177,6 +177,17 @@ class ParseTest(unittest.TestCase):
         ])
         self.assertEqual(d["files_modified"], ["/m/repo/a.go", "/m/repo/b_test.go"])
 
+    def test_notebook_edits_counted(self):
+        d = self.parse([tool_use("t1", "NotebookEdit", {"notebook_path": "/m/repo/n.ipynb"}, ts(0))])
+        self.assertEqual(d["files_modified"], ["/m/repo/n.ipynb"])
+
+    def test_compaction_summary_is_not_a_prompt(self):
+        d = self.parse([
+            {**user_prompt("This session is being continued from a previous conversation", ts(0)), "isCompactSummary": True},
+            user_prompt("run the tests", ts(1)),
+        ])
+        self.assertEqual([p["text"] for p in d["prompts"]], ["run the tests"])
+
 
 GO_OK = "ok: 12 passed, 0 failed, 0 build-failed, 0 skipped (1 packages)"
 GO_FAIL = "FAIL: 11 passed, 1 failed, 0 build-failed, 0 skipped (1 packages)"

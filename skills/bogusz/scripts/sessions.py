@@ -64,8 +64,8 @@ def _content(entry: dict) -> object:
 
 
 def _prompt_text(entry: dict) -> str | None:
-    """Text of a prompt the user typed; None for tool results, meta entries and non-user entries."""
-    if entry.get("type") != "user" or entry.get("isMeta"):
+    """Text of a prompt the user typed; None for tool results, meta entries, compaction summaries and non-user entries."""
+    if entry.get("type") != "user" or entry.get("isMeta") or entry.get("isCompactSummary"):
         return None
     content = _content(entry)
     if isinstance(content, str):
@@ -252,8 +252,9 @@ def parse_transcript(path: Path, e2e: tuple[str, ...] = ()) -> dict:
             discussed.append(n)
 
     files_modified = sorted({
-        c["_raw_input"]["file_path"] for c in calls
-        if c["tool"] in EDIT_TOOLS and isinstance(c["_raw_input"].get("file_path"), str)
+        p for c in calls if c["tool"] in EDIT_TOOLS
+        for p in [c["_raw_input"].get("file_path") or c["_raw_input"].get("notebook_path")]
+        if isinstance(p, str)
     })
     digest = {
         **redact(meta),
@@ -429,23 +430,21 @@ def _hides_exit_code(command: str) -> bool:
 
 
 def _tests(calls: list[dict], e2e: tuple[str, ...] = ()) -> list[dict]:
-    tests, last_seq, attempts = [], {}, {}
+    tests, last_edits, attempts, edits_seen = [], {}, {}, 0
     for c in calls:
+        edits_seen += c["tool"] in EDIT_TOOLS
         command = c["_raw_input"].get("command") if c["tool"] == "Bash" else None
         kind = classify_test_command(command, c["_cwd"], e2e) if isinstance(command, str) else None
         if not kind:
             continue
         key = _norm(command)
-        prev = last_seq.get(key)
-        edits = prev is not None and any(
-            x["tool"] in EDIT_TOOLS and prev < x["seq"] < c["seq"] for x in calls
-        )
-        last_seq[key] = c["seq"]
+        prev = last_edits.get(key)
+        last_edits[key] = edits_seen
         attempts[key] = attempts.get(key, 0) + 1
         tests.append({
             "seq": c["seq"], "command": redact_text(command)[:500], "agent": c["agent"], **kind,
             "attempt": attempts[key],
-            "edits_since_previous_attempt": edits,
+            "edits_since_previous_attempt": prev is not None and edits_seen > prev,
             **parse_test_outcome(c["_output"], c["completed"], c["is_error"], command),
         })
     return tests
