@@ -320,6 +320,21 @@ class TestDetectionTest(unittest.TestCase):
             with self.subTest(cmd=cmd):
                 self.assertEqual(classify_test_command(cmd, "/m/x")["runner"], runner)
 
+    def test_multiline_and_script_forms(self):
+        self.assertEqual(classify_test_command("cd repo\npytest -q", "/m/x")["runner"], "pytest")
+        self.assertEqual(classify_test_command("npm run test:unit", "/m/x"), {"runner": "js", "layer": "unit"})
+        self.assertEqual(classify_test_command("pnpm run test:e2e", "/m/x"), {"runner": "js", "layer": "e2e"})
+
+    def test_unit_layer_is_a_word(self):
+        self.assertEqual(classify_test_command("pytest --junitxml=r.xml", "/m/x")["layer"], "unknown")
+        self.assertEqual(classify_test_command("pytest tests/unit_test.py", "/m/x")["layer"], "unit")
+
+    def test_jest_and_vitest_summaries(self):
+        jest = parse_test_outcome("Test Suites: 1 failed, 1 total\nTests:       1 failed, 2 passed, 3 total", True, True, "npx jest")
+        self.assertEqual((jest["status"], jest["passed"], jest["failed"]), ("failed", 2, 1))
+        vitest = parse_test_outcome(" Test Files  1 passed (1)\n      Tests  3 passed | 1 skipped (4)", True, False, "npx vitest run")
+        self.assertEqual((vitest["status"], vitest["passed"], vitest["skipped"]), ("passed", 3, 1))
+
     def test_format_drift_does_not_crash(self):
         d = self.parse([
             {"type": "user", "timestamp": 1762250400000, "message": "a string message", "cwd": "/m/repo"},
@@ -389,6 +404,9 @@ class TestDetectionTest(unittest.TestCase):
             ("govulncheck ./...", "govulncheck", "security"),
             ("trivy fs --scanners vuln,secret .", "trivy", "security"),
             ("npm audit --omit=dev", "npm-audit", "security"),
+            ("pip-audit -r requirements.txt", "pip-audit", "security"),
+            ("cargo audit", "cargo-audit", "security"),
+            ("locust -f load/locustfile.py --headless", "locust", "perf"),
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(classify_test_command(cmd, "/m/x"), {"runner": runner, "layer": layer})

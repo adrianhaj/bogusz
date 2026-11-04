@@ -314,11 +314,19 @@ def _runner(words: list[str]) -> str | None:
         return "trivy"
     if head == "npm" and rest[:1] == ["audit"]:
         return "npm-audit"
+    if head == "pip-audit":
+        return "pip-audit"
+    if head == "cargo" and rest[:1] == ["audit"]:
+        return "cargo-audit"
+    if head == "locust":
+        return "locust"
     if head == "pytest" or (head.startswith("python") and rest[:2] == ["-m", "pytest"]):
         return "pytest"
     if head == "make" and rest[:1] and (rest[0] in {"test", "e2e", "it"} or rest[0].startswith("test-")):
         return "make"
-    if head in {"npm", "yarn", "pnpm"} and (rest[:1] == ["test"] or rest[:2] == ["run", "test"]):
+    if head in {"npm", "yarn", "pnpm"} and (
+        rest[:1] == ["test"] or (rest[:1] == ["run"] and rest[1:2] and re.fullmatch(r"test(?::\S*)?", rest[1]))
+    ):
         return "js"
     if head == "npx" and rest[:1] and rest[0] in {"vitest", "jest"}:
         return "js"
@@ -326,7 +334,7 @@ def _runner(words: list[str]) -> str | None:
 
 
 def classify_test_command(command: str, cwd: str, e2e: tuple[str, ...] = ()) -> dict | None:
-    for segment in re.split(r"&&|\|\||;|\|", command):
+    for segment in re.split(r"&&|\|\||;|\||\n", command):
         try:
             words = shlex.split(segment)
         except ValueError:
@@ -339,15 +347,15 @@ def classify_test_command(command: str, cwd: str, e2e: tuple[str, ...] = ()) -> 
     where = f"{cwd} {command}"
     if runner == "playwright":
         layer = "ui"
-    elif runner == "k6" or (runner == "go" and "-bench" in command):
+    elif runner in {"k6", "locust"} or (runner == "go" and "-bench" in command):
         layer = "perf"
-    elif runner in {"govulncheck", "trivy", "npm-audit"}:
+    elif runner in {"govulncheck", "trivy", "npm-audit", "pip-audit", "cargo-audit"}:
         layer = "security"
     elif "e2e" in where or any(p in where for p in e2e):
         layer = "e2e"
     elif "integration" in command:
         layer = "integration"
-    elif "unit" in command:
+    elif re.search(r"(?<![A-Za-z])unit(?![A-Za-z])", command):
         layer = "unit"
     else:
         layer = "unknown"
@@ -357,6 +365,7 @@ def classify_test_command(command: str, cwd: str, e2e: tuple[str, ...] = ()) -> 
 _GO_SUMMARY = re.compile(r"^(ok|FAIL): (\d+) passed, (\d+) failed, (\d+) build-failed, (\d+) skipped", re.M)
 _PYTEST_SUMMARY = re.compile(r"^(?:=+ )?(\d+ \w+(?:, \d+ \w+)*) in [\d.]+s\b", re.M)
 _PLAYWRIGHT_SUMMARY = re.compile(r"^\s*(\d+) (passed|failed|flaky|skipped)(?: \([\d.]+(?:ms|s|m|h)\))?\s*$", re.M)
+_JS_SUMMARY = re.compile(r"^\s*Tests:?\s+(.*\d+ (?:passed|failed).*)$", re.M)  # Jest `Tests:`, Vitest `Tests`
 _PLAYWRIGHT_FAILED = re.compile(r"^\s*(?:\d+\) )?(\[[\w-]+\] › .+?)(?:\s+─+)?\s*$", re.M)
 _HOOK_BLOCKED = re.compile(r"^PreToolUse:\S+ hook error:")
 
@@ -393,6 +402,13 @@ def parse_test_outcome(output: str, completed: bool, is_error: bool | None, comm
         out.update(passed=sum(int(n) for n, k in pw if k in {"passed", "flaky"}),
                    failed=sum(int(n) for n, k in pw if k == "failed"),
                    skipped=sum(int(n) for n, k in pw if k == "skipped"))
+    elif js := _JS_SUMMARY.findall(output):
+        counts = {}
+        for n, k in re.findall(r"(\d+) (passed|failed|skipped|todo)", " ".join(js)):
+            counts[k] = counts.get(k, 0) + int(n)
+        recognized = True
+        out.update(passed=counts.get("passed", 0), failed=counts.get("failed", 0),
+                   skipped=counts.get("skipped", 0) + counts.get("todo", 0))
     elif "http_req_" in output:
         recognized, failed_flag = True, bool(re.search(r"^\s*✗ ", output, re.M))
     elif "No vulnerabilities found" in output or (vuln := re.search(r"affected by (\d+) vulnerabilit", output)):
