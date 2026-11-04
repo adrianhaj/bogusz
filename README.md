@@ -36,7 +36,7 @@ Create a Bogusz test profile for this project. Bogusz is a QA agent; the profile
 
 # <Project> test profile
 ## Roots
-One absolute folder per line, no tag: the repo(s) this profile covers.
+One absolute folder per line, no tag: the repo this profile covers, or, for several repos, the folder that contains them.
 ## Repos and test commands
 Table: repo | language | scoped test command | needs (Docker, services, setup) | source.
 ## UI, performance and security entry points
