@@ -151,9 +151,9 @@ Bogusz prints which profile it used, checks every fact against the current code,
 ## What it reads and writes
 
 - **Reads:** your code, and the profile. For `analyze-session`, it also reads Claude Code transcripts under `~/.claude/projects/`, read-only, and only those for sessions started inside the profile's roots.
-- **Writes:** `~/.bogusz/digest.json` (the redacted digest of the analyzed session, overwritten each time), `~/.bogusz/reports/*.md`, and Playwright files under `~/.bogusz/ui/`. All of these are outside your repos. It edits the profile only after you say yes.
+- **Writes:** `~/.bogusz/digests/<session id>.json` (the redacted digest of an analyzed session, one file per analysis), `~/.bogusz/reports/*.md`, and Playwright files under `~/.bogusz/ui/`. All of these are outside your repos. Two things can land in a repo: the profile, saved or edited only after you say yes, and the negative tests a security run adds, which it leaves uncommitted.
 - **Redaction** removes JWTs, bearer and vendor tokens, cloud keys, private keys, cookies, kubeconfig credentials, credentials in URLs and CLI flags, and secret-named keys and assignments. It is regex-based and **best effort**: review reports before you share them.
-- **Network:** nothing is sent anywhere by Bogusz itself. There are no hooks, servers or background jobs. An issue is filed with `gh` only after you approve it.
+- **Network:** Bogusz has no hooks or background jobs of its own; its network use comes from the commands it runs for you. A UI check installs Playwright and Chromium from npm, a load test sends traffic to a target you approved, and `gh` searches and files issues, filing only after you approve. A dev server it starts for a UI check is stopped when the check is done.
 - Claude Code deletes transcripts after `cleanupPeriodDays` (default 30).
 
 ## Safety
