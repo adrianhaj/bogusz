@@ -39,9 +39,9 @@ Bogusz gives you a project folder (or a parent folder holding several repos) and
 1. Read the template.
 2. Find the repos: the folder itself if it is a git repo, otherwise each direct subfolder that has a `.git`.
 3. In each repo, read only these when present: `Makefile`, `justfile`, `Taskfile.yml`, `package.json`, `go.mod`, `pyproject.toml`, `setup.cfg`, `tox.ini`, `noxfile.py`, `Cargo.toml`, `pom.xml`, `build.gradle*`, `.github/workflows/*.yml`, `.gitlab-ci.yml`, `playwright.config.*`, `docker-compose*.yml`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `README*`.
-4. Prefer the commands CI actually runs over the ones docs suggest. Give the narrowest form the tool supports (one package, file or test).
+4. Prefer the commands CI actually runs over the ones docs suggest. Give the narrowest form the tool supports (one package, file or test); a narrow form you didn't see written down is `[guess]`. List folders (Glob) to find where unit, integration and E2E tests live.
 5. Look for schemas, protos, OpenAPI specs and shared-library imports between the repos for `## Cross-repo / API consumers`.
-6. Fill the template. Tag every line `[found: file:line]` or `[guess]`. For `## Roots`, give the absolute folders.
+6. Fill the template. Tag every line or table row `[found: file:line]` or `[guess]`; tag each part of a row that mixes both. `## Roots` lines are plain absolute folders with no tag. Write `none` in a section where nothing was found.
 7. Leave `## Environments` and `## Forbidden commands` as `TODO (human)`. You may list candidates under them (a deploy target in a Makefile, a default URL in a config), each tagged `[found: …]`, as hints for the person, never as decisions.
 8. Never copy a credential value. Write only the names of environment variables.
 

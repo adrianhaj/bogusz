@@ -1,10 +1,10 @@
 # <Project> test profile
 
-A profile tells Bogusz how to test one project: where its code lives, how to run each test layer, and what must never be run. Every line is a fact with its source: `[found: file:line]` when it was read from the project, `[guess]` when it was inferred, or no tag once a person has checked it. Never write credential values here, only the names of the environment variables that hold them.
+A profile tells Bogusz how to test one project: where its code lives, how to run each test layer, and what must never be run. Every line is a fact with its source: `[found: file:line]` when it was read from the project, `[guess]` when it was inferred, or no tag once a person has checked it. A table row that mixes both tags each part. Write `none` in a section where nothing applies. Never write credential values here, only the names of the environment variables that hold them.
 
 ## Roots
 
-One absolute folder per line, `~` allowed. These are the folders this profile covers; session analysis looks only at sessions started inside them.
+One absolute folder per line, `~` allowed, and no tags: Bogusz passes these lines to session analysis as they are. These are the folders this profile covers; session analysis looks only at sessions started inside them.
 
 ## Repos and test commands
 
