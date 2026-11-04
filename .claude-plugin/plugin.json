@@ -1,0 +1,10 @@
+{
+  "name": "bogusz",
+  "version": "0.2.0",
+  "description": "Bogusz: a testing orchestrator with Błażej subagents, per-project profiles and session analysis.",
+  "author": {
+    "name": "adrianhaj"
+  },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/adrianhaj/bogusz"
+}

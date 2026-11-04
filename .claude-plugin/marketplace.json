@@ -1,0 +1,16 @@
+{
+  "name": "bogusz",
+  "owner": {
+    "name": "adrianhaj"
+  },
+  "metadata": {
+    "description": "Bogusz, a testing orchestrator for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "bogusz",
+      "source": "./",
+      "description": "Plans, runs and reports tests for any project from a per-project profile; analyzes past Claude Code sessions."
+    }
+  ]
+}
