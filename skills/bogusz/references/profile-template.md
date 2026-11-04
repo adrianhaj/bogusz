@@ -4,7 +4,7 @@ A profile tells Bogusz how to test one project: where its code lives, how to run
 
 ## Roots
 
-One absolute folder per line, `~` allowed, and no tags: Bogusz passes these lines to session analysis as they are. These are the folders this profile covers; session analysis looks only at sessions started inside them.
+One absolute folder per line, `~` allowed, and no tags: Bogusz passes these lines to session analysis as they are. For a folder of several repos, list that parent folder, not each repo. These are the folders this profile covers; session analysis looks only at sessions started inside them.
 
 ## Repos and test commands
 
