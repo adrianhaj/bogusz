@@ -77,7 +77,7 @@ Title: `<component>: <actual behaviour> when <trigger>`. Keep it under 80 charac
 ## Environment
 - Component / repo: <repo> @ <commit or version>
 - Runtime: <local / kind / env name>, Go/Python version, client version
-- Verdict: confirmed — reproduced <N>/<N> runs on <date>
+- Verdict: confirmed — reproduced <red>/<runs> runs on <date>
 
 ## Steps to reproduce
 1. <exact command or call>
@@ -113,7 +113,7 @@ Rate each row `covered`, `partial`, `missing` or `n/a`, with one line of evidenc
 | Requirement coverage | Is every acceptance criterion exercised by a run test? |
 | Risk coverage | Were the profile's regression-prone areas the change touches tested? |
 | Boundary and negative cases | Invalid input, empty, limits, unauthorised, not-found? |
-| Assertion quality | Do the assertions check behaviour, not just "no error"? Was any assertion weakened? |
+| Assertion quality | Do the assertions check behaviour, not just "no error"? Was any assertion weakened? Any expected value computed the way the code computes it, or a check that goes around the public interface (mocked internal collaborators, reading storage directly)? |
 | Reliability | Deterministic? Any flaky suspects (same command, different result, no edit)? |
 | Execution efficiency | Narrow scope first? Repeated identical failing runs? |
 | Evidence quality | Does every conclusion rest on `passed`/`failed` runs, not `unknown`/`blocked`/none? |

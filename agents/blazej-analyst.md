@@ -27,7 +27,7 @@ Read the whole digest. It can run to thousands of lines, so Read it in 2,000-lin
 - Read before test: were the code and its tests read (`Read`/`Grep` calls) before the first test ran?
 - Scope: was the narrowest relevant command used first, then widened? Or did it jump to the whole suite?
 - Failures: after a `failed` run, did it read the failure, change code or test, then re-run? `attempt > 1` with `edits_since_previous_attempt == false` is a flaky suspect, or a repeated unsuccessful approach.
-- Assertions: did any edit to a `*_test.*` file come right after a failure on that test? Flag it as a possible assertion change and quote the `seq`s.
+- Assertions: did any edit to a `*_test.*` file come right after a failure on that test? Flag it as a possible assertion change and quote the `seq`s. In test code the session added or edited, flag expected values computed the way the code computes them, and checks that go around the public interface (mocked internal collaborators, reading storage directly). Edit inputs are cut at 500 characters, so judge only what the digest shows.
 - Evidence: does the final claim rest on `passed` runs, or on `unknown`/`blocked` ones or none?
 - Coverage: compare what ran with the profile (its test layers and `## Regression-prone areas`) and the area's risk. Name the missing negative, boundary and regression cases specifically.
 

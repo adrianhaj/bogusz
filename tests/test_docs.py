@@ -17,5 +17,14 @@ class SetupPromptTest(unittest.TestCase):
         self.assertEqual(re.findall(r"^## .+$", prompt, re.M), sections)
 
 
+class SkillReferencesTest(unittest.TestCase):
+    def test_every_referenced_file_exists(self):
+        skill_dir = ROOT / "skills/bogusz"
+        refs = set(re.findall(r"\$\{CLAUDE_SKILL_DIR\}/(\S+?\.md)", (skill_dir / "SKILL.md").read_text()))
+        self.assertTrue(refs)
+        for ref in sorted(refs):
+            self.assertTrue((skill_dir / ref).is_file(), ref)
+
+
 if __name__ == "__main__":
     unittest.main()
