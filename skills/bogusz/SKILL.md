@@ -63,7 +63,7 @@ From the feature, PR, issue or bug: requirements → acceptance criteria → exp
 - Use the scoped commands from the profile and the repo's own docs (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`). Use the existing framework. Never add a new one without a stated reason.
 - Start with the smallest relevant scope and expand based on results and risk. Don't run a whole suite when one package or file answers the question.
 - Run test commands unpiped (no `| tail`, no `|| true`), so the exit status is the real one.
-- If a test needs Docker or a service that isn't running, say so; don't skip it silently.
+- If a test needs Docker or a service that isn't running, say so; don't skip it silently. Docker means any Docker-compatible runtime, such as podman serving the Docker API (`docker` may be a podman wrapper, with `DOCKER_HOST` pointing at its socket). Check it by the exit status of `docker info`, never a Docker-only `--format` field such as `.ServerVersion`, which podman lacks.
 - E2E runs only against an environment that the profile's `## Environments` marks safe, or one the user named in this request. If that section is `TODO (human)`, don't run E2E; ask. Never rely on a default target in a Makefile or config. Credentials come from the user's environment; never echo them.
 
 ## Tests you write
