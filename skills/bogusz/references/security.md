@@ -1,0 +1,6 @@
+# Mode I: security
+
+1. **Run the scanners**, read-only, that match the stack (the profile may list them): `govulncheck ./...` (Go), `pip-audit` (Python), `npm audit --omit=dev` (JS), `cargo audit` (Rust), and `trivy fs --scanners vuln,secret,misconfig .` for any repo. Respect the project's ignore files, such as `.trivyignore`. Say which scanners aren't installed instead of skipping them silently.
+2. **Review the code.** Hand the area or diff, and the profile path, to `bogusz:blazej-security`. It returns authorization, input and sensitive-data gaps as concrete negative tests.
+3. **Prove the gaps.** Turn the high and medium gaps into tests in the repo's own framework (another tenant's resource → denied, malformed or oversized input → rejected, no secrets in errors or logs). Run them. A gap is `confirmed` only when a test shows it. Leave the new tests uncommitted and list the files you added; commit them only if the user asks.
+4. **Stay non-destructive.** Never run exploit or fuzz traffic against shared environments, never use real user tokens, and never exfiltrate data. Findings that matter go through Mode F as issues. Mark security-sensitive ones for private handling (for example a GitHub security advisory instead of a public issue), and ask before filing.

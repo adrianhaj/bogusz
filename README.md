@@ -167,6 +167,7 @@ Bogusz never runs destructive commands against production, never deploys or migr
 | `skills/bogusz/SKILL.md` | Bogusz: profile lookup, routing, modes, safety |
 | `skills/bogusz/references/profile-template.md` | The profile sections |
 | `skills/bogusz/references/reporting.md` | Report, session-analysis and bug-issue templates |
+| `skills/bogusz/references/ui.md`, `perf.md`, `security.md` | Modes G, H and I, read only when a request routes there |
 | `skills/bogusz/scripts/sessions.py`, `redact.py` | Transcript lookup and parsing, test detection, redaction (Python stdlib) |
 | `agents/blazej-explorer.md` | Maps an area; discovers a project and drafts its profile |
 | `agents/blazej-analyst.md` | Critiques a past session from its digest |
