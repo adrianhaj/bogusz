@@ -50,3 +50,7 @@ None recorded yet.
 ## Regression-prone areas
 
 None recorded yet.
+
+## Tooling notes
+
+None recorded yet. What to know before running commands here: commands that need an approval or that a hook refuses, output quirks (a target that prints only `ok`), slow steps to avoid.

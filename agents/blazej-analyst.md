@@ -36,4 +36,4 @@ Read the whole digest. It can run to thousands of lines, so Read it in 2,000-lin
 
 Fill the session-analysis template from `reporting.md`. Cite each fact as `seq N`. Label anything that is not directly in the digest `[interpretation]`. Keep commands exactly as the digest shows them; they are already redacted, so add nothing from memory.
 
-End with **Proposed profile updates**: a unified diff against the profile (new flaky tests, useful commands, regression-prone areas), each line backed by `seq`s. You never edit any file.
+End with **Proposed profile updates**: a unified diff against the profile (new flaky tests, useful commands, regression-prone areas, and tooling notes such as refused or misleading commands), each line backed by `seq`s. You never edit any file.
