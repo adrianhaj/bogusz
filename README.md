@@ -55,6 +55,8 @@ Default: GitHub issues on the repo that owns the faulty code.
 None recorded yet.
 ## Regression-prone areas
 None recorded yet.
+## Tooling notes
+None recorded yet.
 
 8. Show me the draft and a short "Gaps" list (what you could not determine and where you looked). Then ask where to save it:
    - .bogusz/profile.md in the repo, to share with the team (single repo), or
@@ -68,7 +70,7 @@ The agent can't know these, so the profile isn't finished until a person has fil
 
 - **Environments:** which targets Bogusz may test against (local, a named staging) and which are shared or production. Add the names of the credential variables, for example `TEST_USER` and `TEST_USER_PASSWORD`. Until this section is filled in, Bogusz runs no E2E or load tests and no deploy-like commands.
 - **Forbidden commands:** deploy, destroy, migrate and reset targets, and CI workflows that touch shared systems.
-- **Known flaky tests** and **regression-prone areas**, if you know any. Session analyses propose additions over time.
+- **Known flaky tests**, **regression-prone areas** and **tooling notes** (commands that need an approval, output quirks), if you know any. Session analyses propose additions over time.
 - Check each `[guess]` line, then remove its tag.
 
 **Commit or keep private?** Commit `.bogusz/profile.md` when the whole team should share it and it names nothing sensitive. Keep it in `~/.bogusz/profiles/` when it names internal environments, or when it spans several repos.
@@ -121,6 +123,9 @@ None recorded yet.
 
 ## Regression-prone areas
 Checkout totals with discounts (api/internal/pricing).
+
+## Tooling notes
+`make test` prints only `ok`; use `go test -v -run <Test>` for per-test results.
 ```
 
 ## Use

@@ -2,23 +2,37 @@
 
 Tag every result line `[ran: <command>]` or `[not run]`. Label anything that is not direct evidence `[interpretation]` or `[assumption]`. Commands are written exactly as run, minus secrets.
 
+## Test plan
+
+Mode B writes this table. The report's results table reuses its rows and IDs.
+
+```markdown
+| ID | Requirement / risk | Case (input → expected) | Layer | Why |
+|---|---|---|---|---|
+| T1 | <acceptance criterion or regression risk> | <one case> | <unit / integration / API / E2E> | <what would go unnoticed without it> |
+```
+
 ## Test report
 
 ```markdown
 # Test report: <subject>  (<YYYY-MM-DD>, repo@branch <sha>)
 
+## Verdict
+<two lines at most: passed / failed / inconclusive, the counts, the bugs found, the biggest thing left untested>
 ## What was tested
-## Why
-<requirement / risk each test covers>
 ## Environment
 <repo, branch, Go/Python version, Docker yes/no, E2E env URL or "none">
 ## Commands
 <one per line, in order>
 ## Results
-| Test / scope | Status | Evidence |
-|---|---|---|
-<passed / failed / skipped / not run, with counts from the runner summary>
+| ID | Requirement / risk | Case | Layer | Status | Evidence |
+|---|---|---|---|---|---|
+<every row of the plan. Status: passed / failed / skipped / blocked / not run. Evidence: `[ran: <command>]` with the counts from the runner summary, or `[not run]` with the reason>
+## Blocked
+<each refused command, the refusal text, and what the user can run or approve to unblock it; "none" otherwise>
 ## Bugs found
+## Files added or changed
+<each test or file Bogusz added or edited, and where it is: "uncommitted on <branch>" or the commit; "none" otherwise>
 ## Known limitations
 <what could not be tested and why>
 ## Regression risks
@@ -64,6 +78,13 @@ Load: <tool, VUs, duration, target>. Noise note: <spread across runs>
 10. Recommendations for future sessions
 
 Proposed profile updates: a diff against the project's profile
+```
+
+The analyst fills sections 1–10. When Bogusz saves the report, it adds this above section 1:
+
+```markdown
+## Verdict
+<what ran, what the evidence supports, what was lost or left unverified>
 ```
 
 ## Bug report (GitHub issue body)

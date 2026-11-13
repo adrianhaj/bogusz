@@ -35,7 +35,7 @@ Say which profile you used in one line (`profile: <path>`). Check every fact you
 | `security …`, "vulnerabilities", "authz", "pentest this" | Mode I: Read `${CLAUDE_SKILL_DIR}/references/security.md` and follow it |
 | `explore …`, "edge cases for …" | Mode A, then Mode B |
 | `plan …`, "plan tests for …" | Mode A, then Mode B. Run no tests |
-| `regression-test` | Mode B on the current branch's diff (`git diff <base>...HEAD`), then Mode C |
+| `regression-test` | Mode B on the current branch's diff, then Mode C, E. The diff is `git diff origin/<base>...HEAD`, where `<base>` is the open PR's base branch (`gh pr view --json baseRefName`) or, with no PR, the default branch |
 | anything else ("test X", "test this PR") | Mode A (skip it if this session already mapped the area), B, C, E |
 
 ## Setup
@@ -56,21 +56,25 @@ Use `bogusz:blazej-explorer` (a **map** task, with the profile path) when the ar
 
 ## Mode B: plan
 
-From the feature, PR, issue or bug: requirements → acceptance criteria → expected behaviour → negative cases → boundaries → regression risks (the profile's `## Regression-prone areas` first) → which layer proves each (unit, integration, API/contract, E2E). Every planned test gets one line on **why** it is needed. Don't write tests until expected behaviour is clear.
+From the feature, PR, issue or bug: requirements → acceptance criteria → expected behaviour → negative cases → boundaries → regression risks (the profile's `## Regression-prone areas` first) → which layer proves each (unit, integration, API/contract, E2E). Write the plan as the test-plan table in `${CLAUDE_SKILL_DIR}/references/reporting.md`: one row per case, each with one line on **why** it is needed. The report's results table reuses these rows and their IDs. Don't write tests until expected behaviour is clear.
 
 ## Mode C: execute
 
-- Use the scoped commands from the profile and the repo's own docs (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`). Use the existing framework. Never add a new one without a stated reason.
+- Use the scoped commands from the profile and the repo's own docs (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`), and follow the profile's `## Tooling notes`. Use the existing framework. Never add a new one without a stated reason.
+- A planned case that no existing test covers: write the test, following **Tests you write**.
 - Start with the smallest relevant scope and expand based on results and risk. Don't run a whole suite when one package or file answers the question.
 - Run test commands unpiped (no `| tail`, no `|| true`) and with nothing chained after them (no `; echo …`), so the exit status is the real one.
 - A run that executed no test proves nothing: Go's `[no tests to run]`, pytest's `no tests ran`, a filter that deselected everything, every test skipped. Fix the filter and run it again, or report the case as `[not run]`.
+- A failing test: check it against the profile's `## Known flaky tests`, then take it through Mode D steps 1–4 (error, red command, reproduction rate, classification) before you report it. Go on to hypotheses and fixes only when asked.
+- A command refused by a permission prompt or a hook is `blocked`: it never ran. Keep the command and the refusal text for the report's `## Blocked`, and carry on with what does not depend on it. Never reword a refused command to get past the refusal.
 - If a test needs Docker or a service that isn't running, say so; don't skip it silently. Docker means any Docker-compatible runtime, such as podman serving the Docker API (`docker` may be a podman wrapper, with `DOCKER_HOST` pointing at its socket). Check it by the exit status of `docker info`, never a Docker-only `--format` field such as `.ServerVersion`, which podman lacks.
 - E2E runs only against an environment that the profile's `## Environments` marks safe, or one the user named in this request. If that section is `TODO (human)`, don't run E2E; ask. Never rely on a default target in a Makefile or config. Credentials come from the user's environment; never echo them.
 
 ## Tests you write
 
-Applies to every test Bogusz adds: repro tests (Mode F), negative security tests (Mode I) and regression tests for a fix.
+Applies to every test Bogusz adds: tests for planned cases (Mode C), repro tests (Mode F), negative security tests (Mode I) and regression tests for a fix.
 
+- Leave them uncommitted unless the user asks for a commit. List every file you added or changed in the report's `## Files added or changed`, and end your reply by naming those files and the branch they sit on.
 - Test through the public interface (handler, route, client method, CLI, exported function) and assert the visible outcome, so a refactor that keeps behaviour keeps the test green.
 - Take each expected value from an independent source: a literal, a worked example, the spec or docs. An expected value computed the way the code computes it passes by construction.
 - Mock only system boundaries (external services, time, randomness). Use the real collaborators the project owns.
@@ -80,7 +84,7 @@ Applies to every test Bogusz adds: repro tests (Mode F), negative security tests
 1. Capture the actual error (re-run verbosely if the summary is too thin).
 2. **Get a red command.** One command that drives the failing code path and asserts the exact symptom, usually the failing test scoped to itself. Done when you have run it and shown its output. Without one, stop and say what you tried; theories from reading code wait until this command exists.
 3. **Measure the reproduction rate.** Run the red command 5 times (twice if one run takes minutes) and report the rate, for example `5/5 red`. All red: deterministic. Mixed: flaky; raise the rate (loop it, pin time and seeds, run in parallel) until it is debuggable, and report the final rate. None red: not reproduced; say so.
-4. Classify it: application bug, test bug, infrastructure (Docker, network, auth, cluster) or test data.
+4. Classify it: application bug, test bug, infrastructure (Docker, network, auth, cluster) or test data. A test listed in the profile's `## Known flaky tests` that fails only some of the runs is a known flake: say so, and don't count it against the change.
 5. **Hypothesise.** Write 3–5 ranked hypotheses, each with its prediction ("if X is the cause, changing Y makes it pass"). Show them to the user, then test them one change at a time. Tag every temporary log line `[DEBUG-<4 hex chars>]`.
 6. Find related tests that cover the same code.
 7. Propose the fix and name the hypothesis that held. Apply it only when the user asked for fixes.
@@ -103,7 +107,9 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 
 ## Mode E: report
 
-Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write it to `~/.bogusz/reports/YYYY-MM-DD-<slug>.md` (`mkdir -p` first). Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
+Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write it to `~/.bogusz/reports/YYYY-MM-DD-<kind>-<slug>.md` (`mkdir -p` first), where `<kind>` is `test`, `ui`, `perf`, `security`, `bug` or `session`. If that file exists, add `-2`, `-3`, … to the name instead of replacing it.
+
+The report opens with `## Verdict`. Its results table carries every row of the plan, including the cases that did not run. Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
 
 Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py <file>` rewrites it in place and prints how many values it replaced. Then Read the file and print that redacted text. The script knows credential shapes only and is best effort. If `python3` is missing, redact by hand and say so.
 
@@ -113,7 +119,7 @@ Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKIL
    `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py show <last|id> --root <root> --e2e <path> --exclude ${CLAUDE_SESSION_ID} --out ~/.bogusz/digests/${CLAUDE_SESSION_ID}.json`
    It prints the path and the line count. On exit code 2, show the stderr message and stop. If `python3` is missing (exit code 127, or macOS asks to install the developer tools), tell the user that session analysis needs Python 3 (on macOS: `xcode-select --install`) and stop. `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py list --root <root>` shows recent sessions if the user needs an id.
 2. Hand `bogusz:blazej-analyst` these three paths, plus the line count: `~/.bogusz/digests/${CLAUDE_SESSION_ID}.json`, `${CLAUDE_SKILL_DIR}/references/reporting.md` and the profile.
-3. Check its report against the digest where the conclusions matter, add your own judgement, then save it as in Mode E.
+3. Check its report against the digest where the conclusions matter. Put your own `## Verdict` above its sections (what ran, what the evidence supports, what was lost or left unverified), then save it as in Mode E, with kind `session`.
 4. Its "Proposed profile updates" stay proposals. Show them to the user; edit the profile only on a yes.
 
 Transcripts older than Claude Code's `cleanupPeriodDays` (default 30) are already gone.

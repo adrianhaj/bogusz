@@ -6,4 +6,4 @@
   - Run it only against a target the profile's `## Environments` marks safe, a local one, or one the user named in this request.
   - State the virtual users, duration and target first. Load on a shared environment needs an explicit yes, because it affects other people.
   - Report p50/p95/p99 latency, the error rate, the throughput and the thresholds.
-- **Baselines:** compare with the previous run in `~/.bogusz/reports/` when there is one. Never call a single run a regression or an improvement: noise needs repeated runs.
+- **Baselines:** compare with the previous `*-perf-<slug>.md` report in `~/.bogusz/reports/` when there is one. Never call a single run a regression or an improvement: noise needs repeated runs.
