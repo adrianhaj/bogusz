@@ -1,4 +1,6 @@
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -193,6 +195,19 @@ class RedactValueTest(unittest.TestCase):
         self.assertEqual(out["password"], "[REDACTED:key]")
         self.assertEqual(out["creds"]["pass"], "[REDACTED:key]")
         self.assertIsNone(out["tokens"])
+
+
+class CliTest(unittest.TestCase):
+    def test_rewrites_the_file_in_place(self):
+        # SKILL.md runs it as `python3 -I redact.py <file>` on every report and issue draft
+        script = Path(__file__).resolve().parent.parent / "skills/bogusz/scripts/redact.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            draft = Path(tmp) / "draft.md"
+            draft.write_text("## Actual\nlogin failed with password=hunter2\nplain line\n")
+            r = subprocess.run([sys.executable, "-I", str(script), str(draft)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(draft.read_text(), "## Actual\nlogin failed with password=[REDACTED:kv]\nplain line\n")
+            self.assertIn("1 redaction", r.stdout)
 
 
 if __name__ == "__main__":

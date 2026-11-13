@@ -75,3 +75,13 @@ def redact(value: object) -> object:
             for k, v in value.items()
         }
     return value
+
+
+if __name__ == "__main__":
+    import sys
+
+    path = Path(sys.argv[1]).expanduser()
+    before = path.read_text()
+    after = redact_text(before)
+    path.write_text(after)
+    print(f"{path}: {after.count('[REDACTED:') - before.count('[REDACTED:')} redaction(s)")

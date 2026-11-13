@@ -2,7 +2,7 @@
 name: bogusz
 description: QA testing orchestrator driven by a per-project test profile. Use for /bogusz, or when asked to test or plan tests for a feature, PR or API; validate a bug and file an issue; check a UI flow with screenshots; run load tests, benchmarks or security scans; or analyze a past session's testing.
 argument-hint: "<what to test> | bug <report> | ui <flow> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test"
-allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *)
+allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *), Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py *)
 ---
 
 # Bogusz
@@ -62,7 +62,8 @@ From the feature, PR, issue or bug: requirements → acceptance criteria → exp
 
 - Use the scoped commands from the profile and the repo's own docs (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`). Use the existing framework. Never add a new one without a stated reason.
 - Start with the smallest relevant scope and expand based on results and risk. Don't run a whole suite when one package or file answers the question.
-- Run test commands unpiped (no `| tail`, no `|| true`), so the exit status is the real one.
+- Run test commands unpiped (no `| tail`, no `|| true`) and with nothing chained after them (no `; echo …`), so the exit status is the real one.
+- A run that executed no test proves nothing: Go's `[no tests to run]`, pytest's `no tests ran`, a filter that deselected everything, every test skipped. Fix the filter and run it again, or report the case as `[not run]`.
 - If a test needs Docker or a service that isn't running, say so; don't skip it silently. Docker means any Docker-compatible runtime, such as podman serving the Docker API (`docker` may be a podman wrapper, with `DOCKER_HOST` pointing at its socket). Check it by the exit status of `docker info`, never a Docker-only `--format` field such as `.ServerVersion`, which podman lacks.
 - E2E runs only against an environment that the profile's `## Environments` marks safe, or one the user named in this request. If that section is `TODO (human)`, don't run E2E; ask. Never rely on a default target in a Makefile or config. Credentials come from the user's environment; never echo them.
 
@@ -97,12 +98,14 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 4. **Locate the cause** in code (`file:line`) where the evidence allows. Otherwise say "not located".
 5. **Verdict**, one of: `confirmed` (reproduced), `not reproduced` (say what was tried), `works as designed` (cite code, docs or tests), `environment` (infra, config or data, not a product bug), `duplicate` (link it).
 6. **Find the target repo**: the one that owns the faulty code, as `owner/repo` from `git -C <repo> remote get-url origin`, unless the profile's `## Issue tracker` says otherwise. **Check for duplicates**: `gh issue list -R <owner/repo> --state all --search "<key terms>"`.
-7. **Draft the issue** with the bug template in `${CLAUDE_SKILL_DIR}/references/reporting.md`. Redact every log and output: no tokens, passwords, internal URLs with credentials, or customer data. Save it to `~/.bogusz/reports/YYYY-MM-DD-bug-<slug>.md`.
+7. **Draft the issue** with the bug template in `${CLAUDE_SKILL_DIR}/references/reporting.md`. The file holds the issue body only: the title goes to `--title`, never into the file. Save it to `~/.bogusz/reports/YYYY-MM-DD-bug-<slug>.md` and redact it as in Mode E. Customer data and internal hostnames have no fixed shape, so take those out yourself.
 8. **File it only on an explicit yes.** Show the target repo, the title, the labels and the body, then ask. Only after the user approves, run `gh issue create -R <owner/repo> --title "<title>" --body-file <draft> [--label bug]` and print the URL. Never file `not reproduced` or `environment` verdicts as product bugs.
 
 ## Mode E: report
 
-Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md`. Print it, and write it to `~/.bogusz/reports/YYYY-MM-DD-<slug>.md` (`mkdir -p` first). Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
+Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write it to `~/.bogusz/reports/YYYY-MM-DD-<slug>.md` (`mkdir -p` first). Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
+
+Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py <file>` rewrites it in place and prints how many values it replaced. Then Read the file and print that redacted text. The script knows credential shapes only and is best effort. If `python3` is missing, redact by hand and say so.
 
 ## Session analysis
 

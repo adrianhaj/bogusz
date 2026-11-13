@@ -366,6 +366,42 @@ class TestDetectionTest(unittest.TestCase):
         self.assertEqual(parse_test_outcome("ok  \tpkg\t0.1s", True, False, "go test ./... | tail")["status"], "unknown")
         self.assertEqual(parse_test_outcome("ok  \tpkg\t0.1s", True, False, "go test ./... || true")["status"], "unknown")
 
+    def test_zero_tests_is_not_a_pass(self):
+        for out in [
+            "ok  \texample.com/v\t0.213s [no tests to run]",
+            "testing: warning: no tests to run\nPASS\nok  \texample.com/v\t0.115s [no tests to run]",
+            "ok: 0 passed, 0 failed, 0 build-failed, 0 skipped (1 packages)",
+            "==== 3 skipped in 0.10s ====",
+        ]:
+            with self.subTest(out=out):
+                self.assertEqual(parse_test_outcome(out, True, False, "go test -run TestTypo ./...")["status"], "no_tests")
+        mixed = "ok  \tpkg/a\t0.1s\nok  \tpkg/b\t0.2s [no tests to run]"
+        self.assertEqual(parse_test_outcome(mixed, True, False, "go test -run TestA ./...")["status"], "passed")
+
+    def test_command_after_the_runner_hides_its_exit_code(self):
+        for cmd, status in [
+            ("go test ./...; echo exit=$?", "unknown"),
+            ("go test ./...\necho done", "unknown"),
+            ("go test ./... |\ntail", "unknown"),
+            ("cd api; go test ./...", "passed"),
+            ("cd api\ngo test ./...", "passed"),
+            ("go test -run 'A;B' ./...", "passed"),
+            ("go test ./... ;", "passed"),
+            ("make lint; cd api && go test ./...", "passed"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(parse_test_outcome("ok  \tpkg\t0.1s", True, False, cmd)["status"], status)
+
+    def test_refused_edit_is_not_a_modification(self):
+        d = self.parse(
+            self.run_cmd("t1", "make test", GO_FAIL, True, 0)
+            + [tool_use("e1", "Write", {"file_path": "/m/repo/denied.md"}, ts(5)),
+               tool_result("e1", "The user doesn't want to proceed with this tool use.", is_error=True, ts=ts(6))]
+            + self.run_cmd("t2", "make test", GO_FAIL, True, 10)
+        )
+        self.assertEqual(d["files_modified"], [])
+        self.assertFalse(d["tests"][1]["edits_since_previous_attempt"])
+
     def test_discussed_ignores_redaction_of_ran_command(self):
         d = self.parse([
             assistant_text("run `CLIENT_SECRET=x make test`", ts(0)),

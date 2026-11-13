@@ -68,7 +68,7 @@ Proposed profile updates: a diff against the project's profile
 
 ## Bug report (GitHub issue body)
 
-Title: `<component>: <actual behaviour> when <trigger>`. Keep it under 80 characters, and name the symptom, not the suspected fix.
+Title: `<component>: <actual behaviour> when <trigger>`. Keep it under 80 characters, and name the symptom, not the suspected fix. The title is passed to `gh issue create --title`. The saved draft starts at `## Summary`, because the whole file becomes the issue body.
 
 ```markdown
 ## Summary
@@ -116,5 +116,5 @@ Rate each row `covered`, `partial`, `missing` or `n/a`, with one line of evidenc
 | Assertion quality | Do the assertions check behaviour, not just "no error"? Was any assertion weakened? Any expected value computed the way the code computes it, or a check that goes around the public interface (mocked internal collaborators, reading storage directly)? |
 | Reliability | Deterministic? Any flaky suspects (same command, different result, no edit)? |
 | Execution efficiency | Narrow scope first? Repeated identical failing runs? |
-| Evidence quality | Does every conclusion rest on `passed`/`failed` runs, not `unknown`/`blocked`/none? |
+| Evidence quality | Does every conclusion rest on `passed`/`failed` runs, not `unknown`/`no_tests`/`blocked`/none? |
 | Regression protection | Is there now a test that would catch this bug or behaviour again? |
