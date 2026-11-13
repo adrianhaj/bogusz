@@ -195,6 +195,18 @@ claude plugin validate .
 
 `tests/test_docs.py` checks that the setup prompt above lists every section of the profile template.
 
+### Release
+
+1. Bump `version` in `.claude-plugin/plugin.json` as the last commit of the change (`chore: release X.Y.Z`). Users get the new version once that commit is on `main`.
+2. After it merges, tag and publish from an up-to-date `main`:
+
+```bash
+claude plugin tag --push    # creates and pushes bogusz--vX.Y.Z from plugin.json
+gh release create bogusz--vX.Y.Z --verify-tag --title "Bogusz X.Y.Z" --generate-notes --notes "<what changed, in a few lines>"
+```
+
+The `--notes` text goes above the generated list of pull requests since the previous release.
+
 ## License
 
 Apache-2.0
