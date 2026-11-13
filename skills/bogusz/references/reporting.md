@@ -49,6 +49,8 @@ Add whichever applies under `## Results`:
 ### UI (<base URL>, <viewport>)
 | # | Step | Expected | Result | Screenshot |
 Console errors / failed requests: <list or "none">
+Traces of failed steps: <path to each trace.zip, or "none">
+<a before/after run uses: | # | Step | Before | After | Differs? | Screenshots |>
 
 ### Performance
 | Metric | Base | Change | Δ | Runs |
@@ -99,6 +101,7 @@ Title: `<component>: <actual behaviour> when <trigger>`. Keep it under 80 charac
 - Component / repo: <repo> @ <commit or version>
 - Runtime: <local / kind / env name>, Go/Python version, client version
 - Verdict: confirmed — reproduced <red>/<runs> runs on <date>
+- Introduced by: <PR or commit, when `git log` or `git blame` shows it; leave this line out otherwise>
 
 ## Steps to reproduce
 1. <exact command or call>
