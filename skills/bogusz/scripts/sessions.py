@@ -16,7 +16,9 @@ from redact import redact, redact_text  # noqa: E402
 KNOWN_TYPES = {"user", "assistant", "system", "summary"}
 KNOWN_IGNORED = {
     "mode", "permission-mode", "file-history-snapshot", "attachment", "last-prompt",
-    "queue-operation", "ai-title", "cost-state",
+    "queue-operation", "ai-title", "cost-state", "api-request", "api-request-blob", "api-request-shape",
+    "atis-latch", "session-owner", "pr-link", "custom-title", "agent-name", "relocated", "frame-link", "tools-used",
+    "file-history-delta", "artifact-autoreact-ledger", "artifact-comment-monitor",
 }
 EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
 
@@ -303,11 +305,15 @@ def _runner(words: list[str]) -> str | None:
     if not words:
         return None
     head, rest = PurePath(words[0]).name, words[1:]
+    if {"--help", "--version"} & set(rest):
+        return None
+    via_pm = head in {"npx", "bunx", "npm", "pnpm", "yarn"}
+    js_bin = rest[1:] if rest[:1] == ["exec"] else rest  # `pnpm exec playwright test`, `yarn vitest`
     if head == "make":
         rest = [w for i, w in enumerate(rest) if not (w == "-C" or (i and rest[i - 1] == "-C"))]
     if (head == "go" and rest[:1] == ["test"]) or head == "gotestsum":
         return "go"
-    if (head == "npx" and rest[:2] == ["playwright", "test"]) or (head == "playwright" and rest[:1] == ["test"]):
+    if (via_pm and js_bin[:2] == ["playwright", "test"]) or (head == "playwright" and rest[:1] == ["test"]):
         return "playwright"
     if head in {"npm", "yarn", "pnpm"} and rest[:1] == ["run"] and rest[1:2] and rest[1].startswith("e2e"):
         return "playwright"
@@ -333,8 +339,19 @@ def _runner(words: list[str]) -> str | None:
         rest[:1] == ["test"] or (rest[:1] == ["run"] and rest[1:2] and re.fullmatch(r"test(?::\S*)?", rest[1]))
     ):
         return "js"
-    if head == "npx" and rest[:1] and rest[0] in {"vitest", "jest"}:
+    if via_pm and js_bin[:1] and js_bin[0] in {"vitest", "jest"}:
         return "js"
+    # ponytail: the runners below without an outcome parser show up as `unknown`; add a parser when a project needs one
+    if head.startswith("python") and rest[:2] == ["-m", "unittest"]:
+        return "unittest"
+    if head in {"cargo", "bun", "dotnet"} and rest[:1] == ["test"]:
+        return head
+    if head == "tox":
+        return "tox"
+    if head in {"mvn", "mvnw"} and {"test", "verify"} & set(rest):
+        return "maven"
+    if head in {"gradle", "gradlew"} and any(w == "test" or w.endswith(":test") for w in rest):
+        return "gradle"
     return None
 
 
@@ -372,27 +389,53 @@ _PYTEST_SUMMARY = re.compile(r"^(?:=+ )?(\d+ \w+(?:, \d+ \w+)*) in [\d.]+s\b", r
 _PLAYWRIGHT_SUMMARY = re.compile(r"^\s*(\d+) (passed|failed|flaky|skipped)(?: \([\d.]+(?:ms|s|m|h)\))?\s*$", re.M)
 _JS_SUMMARY = re.compile(r"^\s*Tests:?\s+(.*\d+ (?:passed|failed).*)$", re.M)  # Jest `Tests:`, Vitest `Tests`
 _PLAYWRIGHT_FAILED = re.compile(r"^\s*(?:\d+\) )?(\[[\w-]+\] › .+?)(?:\s+─+)?\s*$", re.M)
-_HOOK_BLOCKED = re.compile(r"^PreToolUse:\S+ hook error:")
+_REFUSED = re.compile(  # a hook or a permission prompt stopped the command before it ran
+    r"^(?:PreToolUse:\S+ hook error:|Permission for this (?:action|command) was denied"
+    r"|This (?:Bash )?command (?:contains multiple operations\. The following part )?requires approval"
+    r"|The user doesn't want to proceed with this tool use)"
+)
+_UNITTEST_SUMMARY = re.compile(r"^Ran (\d+) tests? in [\d.]+s\s+^(?:OK|FAILED|NO TESTS RAN)(?: \((.*)\))?", re.M)
+_CARGO_SUMMARY = re.compile(r"^test result: \w+\. (\d+) passed; (\d+) failed; (\d+) ignored", re.M)
+_FAILURE_LINE = re.compile(r"--- FAIL|^E\s|^(?:FAIL|ERROR)\b|^FAILED\b|panicked|Error\b|Exception\b")
+
+
+def _failure_excerpt(output: str) -> str:
+    """Up to 25 lines around the first line that reports a failure: the message is rarely in the last lines."""
+    lines = redact_text(output).splitlines()
+    first = next((i for i, line in enumerate(lines) if _FAILURE_LINE.search(line)), 0)
+    return "\n".join(line[:200] for line in lines[max(first - 10, 0):first + 15])
 
 
 def parse_test_outcome(output: str, completed: bool, is_error: bool | None, command: str = "") -> dict:
     """A command that hides the runner's exit code is never `passed`; a run that executed no test is `no_tests`."""
-    out = {"status": "unknown", "passed": None, "failed": None, "skipped": None, "failed_tests": []}
+    out = {"status": "unknown", "passed": None, "failed": None, "skipped": None, "failed_tests": [], "failure_excerpt": ""}
     no_tests = False
     if not completed:
         out["status"] = "not_completed"
         return out
-    if _HOOK_BLOCKED.match(output):
+    if _REFUSED.match(output):
         out["status"] = "blocked"
         return out
     out["failed_tests"] = list(dict.fromkeys(
-        re.findall(r"^\s*--- FAIL: (\S+)", output, re.M) + re.findall(r"^FAILED (\S+)", output, re.M)
+        re.findall(r"^\s*--- FAIL: (\S+)", output, re.M) + re.findall(r"^FAILED ([^\s(]\S*)", output, re.M)
         + _PLAYWRIGHT_FAILED.findall(output)
     ))
     failed_flag, recognized = False, False
     if m := _GO_SUMMARY.search(output):
         recognized, failed_flag = True, m.group(1) == "FAIL"
         out.update(passed=int(m.group(2)), failed=int(m.group(3)) + int(m.group(4)), skipped=int(m.group(5)))
+    elif m := _UNITTEST_SUMMARY.search(output):
+        recognized = True
+        counts = {k: int(n) for k, n in re.findall(r"([a-z][a-z ]*)=(\d+)", m.group(2) or "")}
+        failed = sum(counts.get(k, 0) for k in ("failures", "errors", "unexpected successes"))
+        skipped = counts.get("skipped", 0)
+        out.update(passed=int(m.group(1)) - failed - skipped, failed=failed, skipped=skipped)
+        out["failed_tests"] += re.findall(r"^(?:FAIL|ERROR): (\S+ \(\S+\))$", output, re.M)
+    elif cargo := _CARGO_SUMMARY.findall(output):
+        recognized = True
+        out.update(passed=sum(int(c[0]) for c in cargo), failed=sum(int(c[1]) for c in cargo),
+                   skipped=sum(int(c[2]) for c in cargo))
+        out["failed_tests"] += dict.fromkeys(re.findall(r"^(?:test )?(\S+) (?:\.\.\.|---) FAILED$", output, re.M))
     elif ms := _PYTEST_SUMMARY.findall(output):
         counts = {}
         for summary in ms:
@@ -437,6 +480,7 @@ def parse_test_outcome(output: str, completed: bool, is_error: bool | None, comm
         recognized = bool(marks or pkg_ok or failed_flag)
     if failed_flag or (out["failed"] or 0) > 0 or out["failed_tests"]:
         out["status"] = "failed"
+        out["failure_excerpt"] = _failure_excerpt(output)
     elif recognized and (no_tests or out["passed"] == 0):
         out["status"] = "no_tests"
     elif recognized and is_error is False and not _hides_exit_code(command):
@@ -497,11 +541,13 @@ def main(argv: list[str] | None = None) -> int:
     ls = sub.add_parser("list")
     ls.add_argument("--limit", type=int, default=20)
     show = sub.add_parser("show")
-    show.add_argument("--e2e", action="append", default=[], help="path or name fragment that marks an E2E test run")
-    for p in (ls, show):
+    runs = sub.add_parser("tests", help="one JSON line per test run of a session")
+    for p in (ls, show, runs):
         p.add_argument("--root", action="append", type=Path, help="project root whose sessions count (default: cwd)")
-    show.add_argument("ref")
-    show.add_argument("--exclude", nargs="?", help="session id to skip; empty is ignored")
+    for p in (show, runs):
+        p.add_argument("--e2e", action="append", default=[], help="path or name fragment that marks an E2E test run")
+        p.add_argument("ref")
+        p.add_argument("--exclude", nargs="?", help="session id to skip; empty is ignored")
     show.add_argument("--out", help="write the digest to this file (parent dirs created) instead of stdout")
     args = parser.parse_args(argv)
 
@@ -511,8 +557,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "list":
             for s in list_sessions(projects, roots, args.limit):
                 print(json.dumps(s))
+            return 0
+        parsed = parse_transcript(find_transcript(args.ref, projects, roots, args.exclude), tuple(args.e2e))
+        if args.cmd == "tests":
+            for t in parsed["tests"]:
+                print(json.dumps(t))
         else:
-            digest = json.dumps(parse_transcript(find_transcript(args.ref, projects, roots, args.exclude), tuple(args.e2e)), indent=1)
+            digest = json.dumps(parsed, indent=1)
             if args.out:
                 out = Path(args.out).expanduser()
                 out.parent.mkdir(parents=True, exist_ok=True)

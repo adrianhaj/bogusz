@@ -111,6 +111,8 @@ Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write 
 
 The report opens with `## Verdict`. Its results table carries every row of the plan, including the cases that did not run. Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
 
+Take the commands and their statuses from this session's own record, not from memory: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py tests ${CLAUDE_SESSION_ID} --root <root>` prints one JSON line per test run (`--root` as in Session analysis). A run it marks `no_tests`, `blocked` or `not_completed` is never a pass. `unknown` means the script could not read that runner's summary: read the output yourself and quote the summary line you relied on. If the command fails or `python3` is missing, work from memory and say so under `## Known limitations`.
+
 Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py <file>` rewrites it in place and prints how many values it replaced. Then Read the file and print that redacted text. The script knows credential shapes only and is best effort. If `python3` is missing, redact by hand and say so.
 
 ## Session analysis

@@ -70,7 +70,7 @@ Load: <tool, VUs, duration, target>. Noise note: <spread across runs>
 3. Testing approach: what was read before testing, which layers were chosen
 4. Chronological activity: seq-ordered, one line each, test runs in bold
 5. Tests actually executed: table of command | runner | layer | attempt | status | counts | seq
-   plus "Discussed, not run" and "Blocked by hook"
+   plus "Discussed, not run" and "Blocked (hook or permission prompt)"
 6. Results and failures: each failure, what happened next, whether it was resolved
 7. Testing quality assessment: the table below
 8. Missed test scenarios
