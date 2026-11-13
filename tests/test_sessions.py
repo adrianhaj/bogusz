@@ -133,9 +133,17 @@ class ParseTest(unittest.TestCase):
 
     def test_unknown_types_and_string_content(self):
         no_ts = tool_use("t1", "Bash", {"command": "ls"}, None)
-        d = self.parse([{"type": "atis-latch"}, user_prompt("plain string", ts(0)), no_ts, {"type": "cost-state"}])
-        self.assertEqual(d["unknown_entry_types"], {"atis-latch": 1})
+        d = self.parse([{"type": "brand-new-type"}, user_prompt("plain string", ts(0)), no_ts, {"type": "cost-state"}])
+        self.assertEqual(d["unknown_entry_types"], {"brand-new-type": 1})
         self.assertEqual(d["prompts"][0]["text"], "plain string")
+
+    def test_bookkeeping_entry_types_are_not_unknown(self):
+        # types seen in real transcripts that carry no prompt, tool call or result
+        kinds = ["api-request", "api-request-blob", "api-request-shape", "atis-latch", "session-owner", "pr-link",
+                 "custom-title", "agent-name", "relocated", "frame-link", "tools-used", "file-history-delta",
+                 "artifact-autoreact-ledger", "artifact-comment-monitor"]
+        d = self.parse([{"type": k} for k in kinds] + [user_prompt("hi", ts(0))])
+        self.assertEqual(d["unknown_entry_types"], {})
 
     def test_interrupted_session(self):
         d = self.parse([
@@ -401,6 +409,102 @@ class TestDetectionTest(unittest.TestCase):
         )
         self.assertEqual(d["files_modified"], [])
         self.assertFalse(d["tests"][1]["edits_since_previous_attempt"])
+
+    def test_more_runners_are_recognised(self):
+        for cmd, runner in [
+            ("python3 -m unittest discover -s tests -t .", "unittest"),
+            ("uv run python -m unittest tests.test_a", "unittest"),
+            ("cargo test -p api", "cargo"),
+            ("mvn -q test", "maven"),
+            ("./gradlew :api:test", "gradle"),
+            ("bun test", "bun"),
+            ("dotnet test", "dotnet"),
+            ("tox -e py312", "tox"),
+            ("pnpm vitest run", "js"),
+            ("pnpm exec playwright test e2e/a.spec.ts", "playwright"),
+            ("yarn playwright test", "playwright"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(classify_test_command(cmd, "/m/x")["runner"], runner)
+        for cmd in ["npx playwright test --help", "pytest --version", "cargo build", "mvn -q compile", "bun install", "pnpm install"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNone(classify_test_command(cmd, "/m/x"))
+
+    def test_unittest_outcomes(self):
+        rule = "-" * 70
+        o = parse_test_outcome(f"....\n{rule}\nRan 84 tests in 0.387s\n\nOK\n", True, False, "python3 -m unittest discover -s tests -t .")
+        self.assertEqual((o["status"], o["passed"], o["failed"], o["skipped"]), ("passed", 84, 0, 0))
+        o = parse_test_outcome(f"..s\n{rule}\nRan 3 tests in 0.001s\n\nOK (skipped=1)\n", True, False, "python3 -m unittest")
+        self.assertEqual((o["status"], o["passed"], o["skipped"]), ("passed", 2, 1))
+        failing = (
+            f"FE.s\n{'=' * 70}\nERROR: test_err (test_u.T.test_err)\n{rule}\nTraceback (most recent call last):\n"
+            f'  File "/x/test_u.py", line 12, in test_err\n    raise RuntimeError("boom")\nRuntimeError: boom\n\n'
+            f"{'=' * 70}\nFAIL: test_bad (test_u.T.test_bad)\n{rule}\nTraceback (most recent call last):\n"
+            f'  File "/x/test_u.py", line 9, in test_bad\n    self.assertEqual(1, 2)\nAssertionError: 1 != 2\n\n'
+            f"{rule}\nRan 4 tests in 0.000s\n\nFAILED (failures=1, errors=1, skipped=1)\n"
+        )
+        o = parse_test_outcome(failing, True, True, "python3 -m unittest test_u")
+        self.assertEqual((o["status"], o["passed"], o["failed"], o["skipped"]), ("failed", 1, 2, 1))
+        self.assertEqual(o["failed_tests"], ["test_err (test_u.T.test_err)", "test_bad (test_u.T.test_bad)"])
+        o = parse_test_outcome(f"\n{rule}\nRan 0 tests in 0.000s\n\nNO TESTS RAN\n", True, True, "python3 -m unittest -k nosuch")
+        self.assertEqual(o["status"], "no_tests")
+
+    def test_cargo_outcomes(self):
+        failing = (
+            "running 3 tests\ntest tests::later ... ignored\ntest tests::adds ... ok\ntest tests::breaks ... FAILED\n\n"
+            "failures:\n\n---- tests::breaks stdout ----\n\nthread 'tests::breaks' (529754) panicked at src/lib.rs:6:19:\n"
+            "assertion `left == right` failed\n  left: 2\n right: 3\n\n\nfailures:\n    tests::breaks\n\n"
+            "test result: FAILED. 1 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+            "error: test failed, to rerun pass `--lib`\n"
+        )
+        o = parse_test_outcome(failing, True, True, "cargo test")
+        self.assertEqual((o["status"], o["passed"], o["failed"], o["skipped"], o["failed_tests"]), ("failed", 1, 1, 1, ["tests::breaks"]))
+        quiet = "running 3 tests\ni. 2/3\ntests::breaks --- FAILED\n\ntest result: FAILED. 1 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s\n"
+        self.assertEqual(parse_test_outcome(quiet, True, True, "cargo test -q")["failed_tests"], ["tests::breaks"])
+        nothing = "running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s\n"
+        self.assertEqual(parse_test_outcome(nothing, True, False, "cargo test nosuch")["status"], "no_tests")
+        two_targets = (
+            "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+            "   Doc-tests v\n\nrunning 0 tests\n\n"
+            "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n"
+        )
+        o = parse_test_outcome(two_targets, True, False, "cargo test")
+        self.assertEqual((o["status"], o["passed"]), ("passed", 2))
+
+    def test_refused_commands_are_blocked(self):
+        # wordings taken from real transcripts
+        for out in [
+            "Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Unauthorized Access].",
+            "Permission for this command was denied by a built-in Claude Code safety check.",
+            "This command requires approval",
+            "This Bash command contains multiple operations. The following part requires approval: go tool cover -func=c.out",
+            "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, "
+            "the new_string was NOT written to the file).",
+        ]:
+            with self.subTest(out=out):
+                self.assertEqual(parse_test_outcome(out, True, True, "make test")["status"], "blocked")
+
+    def test_failure_excerpt_keeps_the_message(self):
+        noise = "".join(f"=== RUN   TestB{i}\n--- PASS: TestB{i} (0.00s)\n" for i in range(30))
+        out = (
+            "=== RUN   TestA\n    a_test.go:12: expected 0, actual 1 with password=hunter2\n--- FAIL: TestA (0.00s)\n"
+            + noise + "FAIL\nFAIL\tpkg\t0.2s\n"
+        )
+        o = parse_test_outcome(out, True, True, "go test -v ./...")
+        self.assertIn("a_test.go:12: expected 0, actual 1", o["failure_excerpt"])
+        self.assertNotIn("hunter2", o["failure_excerpt"])
+        self.assertLessEqual(len(o["failure_excerpt"].splitlines()), 25)
+        self.assertEqual(parse_test_outcome("ok  \tpkg\t0.1s", True, False, "go test ./...")["failure_excerpt"], "")
+
+    def test_cli_tests_lists_only_the_test_runs(self):
+        root = Path(self.tmp.name)
+        write(root / "-m-repo" / f"{A}.jsonl", [user_prompt("hi", ts(0))]
+              + self.run_cmd("t1", "go test ./a/...", "ok  \tpkg/a\t0.1s", False, 1) + self.run_cmd("t2", "ls", "a.go", False, 5))
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {"BOGUSZ_PROJECTS_ROOT": str(root)}), redirect_stdout(out):
+            self.assertEqual(main(["tests", A, "--root", "/m"]), 0)
+        rows = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual([(r["command"], r["status"]) for r in rows], [("go test ./a/...", "passed")])
 
     def test_discussed_ignores_redaction_of_ran_command(self):
         d = self.parse([

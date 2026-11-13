@@ -13,12 +13,12 @@ Read the whole digest. It can run to thousands of lines, so Read it in 2,000-lin
 
 - `prompts`: what the user typed, with `seq`. The first one is the objective.
 - `tool_calls`: every tool call in order (`seq` is shared with `prompts`), with `agent` (`main` or a subagent), redacted `input`, `completed`, `is_error`, `duration_s`, `output_tail`.
-- `tests`: the Bash calls that ran a test runner, with `runner`, `layer`, `attempt`, `edits_since_previous_attempt`, `status`, counts and `failed_tests`.
+- `tests`: the Bash calls that ran a test runner, with `runner`, `layer`, `attempt`, `edits_since_previous_attempt`, `status`, counts, `failed_tests` and, for a failed run, `failure_excerpt` (up to 25 lines around the first failure).
   - `passed`: the runner's output was recognised, nothing failed, the call did not error, and nothing could hide the exit code (no pipe, no `||`, no other command chained after the runner).
   - `no_tests`: it ran, but executed no test: the filter matched nothing, or every test was skipped. It proves nothing.
   - `failed`: the output shows a failure: a summary with failures, a bare `FAIL` line, a failed test name, or scanner findings.
   - `unknown`: it ran, but no summary was recognised. It is unverified, not passed.
-  - `blocked`: a hook refused the command. It never ran.
+  - `blocked`: a hook or a permission prompt refused the command. It never ran.
   - `not_completed`: no result was recorded, because the session stopped first.
 - `discussed_not_run`: test commands that appear in the assistant's text but never in a tool call.
 - `files_modified` (refused edits are left out), `interrupted`, `malformed_lines`, `unknown_entry_types`.
