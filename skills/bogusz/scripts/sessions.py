@@ -252,7 +252,7 @@ def parse_transcript(path: Path, e2e: tuple[str, ...] = ()) -> dict:
             discussed.append(n)
 
     files_modified = sorted({
-        p for c in calls if c["tool"] in EDIT_TOOLS
+        p for c in calls if _edited(c)
         for p in [c["_raw_input"].get("file_path") or c["_raw_input"].get("notebook_path")]
         if isinstance(p, str)
     })
@@ -276,6 +276,11 @@ def parse_transcript(path: Path, e2e: tuple[str, ...] = ()) -> dict:
 
 def _norm(command: str) -> str:
     return " ".join(command.split())
+
+
+def _edited(call: dict) -> bool:
+    """An edit call that was not refused; one with no recorded result still counts."""
+    return call["tool"] in EDIT_TOOLS and call["is_error"] is not True
 
 
 def _code_spans(text: str) -> list[str]:
@@ -371,8 +376,9 @@ _HOOK_BLOCKED = re.compile(r"^PreToolUse:\S+ hook error:")
 
 
 def parse_test_outcome(output: str, completed: bool, is_error: bool | None, command: str = "") -> dict:
-    """A command piped after the runner or ending in `|| …` hides the runner's exit code: never `passed`."""
+    """A command that hides the runner's exit code is never `passed`; a run that executed no test is `no_tests`."""
     out = {"status": "unknown", "passed": None, "failed": None, "skipped": None, "failed_tests": []}
+    no_tests = False
     if not completed:
         out["status"] = "not_completed"
         return out
@@ -422,13 +428,17 @@ def parse_test_outcome(output: str, completed: bool, is_error: bool | None, comm
         out["failed"] = int(audit.group(1)) if "found 0 vulnerabilities" not in output else 0
     else:
         marks = re.findall(r"^\s*--- (PASS|FAIL|SKIP):", output, re.M)
-        pkg_ok = re.search(r"^ok\s", output, re.M)
+        pkg_ok = re.findall(r"^ok\s.*$", output, re.M)
         failed_flag = bool(re.search(r"^FAIL\b", output, re.M))
         if marks:
             out.update(passed=marks.count("PASS"), failed=marks.count("FAIL"), skipped=marks.count("SKIP"))
+        else:
+            no_tests = bool(pkg_ok) and all("[no tests to run]" in line for line in pkg_ok)
         recognized = bool(marks or pkg_ok or failed_flag)
     if failed_flag or (out["failed"] or 0) > 0 or out["failed_tests"]:
         out["status"] = "failed"
+    elif recognized and (no_tests or out["passed"] == 0):
+        out["status"] = "no_tests"
     elif recognized and is_error is False and not _hides_exit_code(command):
         out["status"] = "passed"
     out["failed_tests"] = [redact_text(t) for t in out["failed_tests"]]
@@ -436,19 +446,34 @@ def parse_test_outcome(output: str, completed: bool, is_error: bool | None, comm
 
 
 def _hides_exit_code(command: str) -> bool:
-    """True when a pipe or `||` outside quotes can mask the runner's exit code."""
+    """True when the shell's exit status may not be the runner's: a pipe or `||` outside quotes, or a last
+    command (after `;` or a newline) that is not a test runner."""
+    punct = set("();<>|&\n")
     try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        return any(set(tok) <= {"|", "&"} and "|" in tok for tok in lexer)
+        lexer = shlex.shlex(command, posix=True, punctuation_chars="".join(punct))
+        lexer.whitespace, lexer.whitespace_split = " \t\r", True
+        tokens = list(lexer)
     except ValueError:
-        return "|" in command
+        return any(ch in command for ch in "|;\n")
+    statements, current = [], [[]]  # a statement ends at `;` or a newline and holds its simple commands
+    for tok in tokens:
+        if not set(tok) <= punct:
+            current[-1].append(tok)
+        elif "|" in tok:
+            return True
+        elif ";" in tok or "\n" in tok:
+            statements.append(current)
+            current = [[]]
+        else:
+            current.append([])
+    statements = [s for s in statements + [current] if any(s)]
+    return len(statements) > 1 and not any(_runner(words) for words in statements[-1])
 
 
 def _tests(calls: list[dict], e2e: tuple[str, ...] = ()) -> list[dict]:
     tests, last_edits, attempts, edits_seen = [], {}, {}, 0
     for c in calls:
-        edits_seen += c["tool"] in EDIT_TOOLS
+        edits_seen += _edited(c)
         command = c["_raw_input"].get("command") if c["tool"] == "Bash" else None
         kind = classify_test_command(command, c["_cwd"], e2e) if isinstance(command, str) else None
         if not kind:

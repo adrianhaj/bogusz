@@ -26,5 +26,15 @@ class SkillReferencesTest(unittest.TestCase):
             self.assertTrue((skill_dir / ref).is_file(), ref)
 
 
+class DigestDocsTest(unittest.TestCase):
+    def test_analyst_explains_every_test_status(self):
+        source = (ROOT / "skills/bogusz/scripts/sessions.py").read_text()
+        statuses = set(re.findall(r'"status"\]? ?[:=] "(\w+)"', source))
+        self.assertIn("passed", statuses)
+        analyst = (ROOT / "agents/blazej-analyst.md").read_text()
+        for status in sorted(statuses):
+            self.assertIn(f"- `{status}`:", analyst)
+
+
 if __name__ == "__main__":
     unittest.main()
