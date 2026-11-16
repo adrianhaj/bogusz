@@ -6,6 +6,25 @@ Its helpers are the Błażej subagents: Explorer, Analyst, UI and Security.
 
 Bogusz knows nothing about your project until you give it a **profile**: one Markdown file that says where the code lives, how each test layer runs, which environments are safe and which commands must never run.
 
+## A real run
+
+`/bogusz test UUID parsing (Parse, ParseBytes, Validate)` on a fresh clone of [google/uuid](https://github.com/google/uuid) at `2d3c2a9`. Bogusz read the three functions, planned 13 cases, added 39 test cases where the existing tests were thin, and saved this report:
+
+> **Verdict**
+> Passed. 6 commands ran 58 tests and subtests with 0 failures, and two 10-second fuzz runs (6.5 million executions) found no panic. No bug found.
+> The biggest thing left untested: the callers that inherit Parse's leniency (`UnmarshalText`, `Scan`, JSON), and `MustParse`.
+
+Four of the 13 result rows:
+
+| ID | Requirement / risk | Case | Layer | Status | Evidence |
+|---|---|---|---|---|---|
+| T2 | The URN, braced and raw-hex forms decode to the same bytes | `urn:uuid:…`, `{…}`, 32 hex digits → the same 16 bytes | unit | passed | `[ran: go test -count=1 -v -run '^TestParse' .]` `TestParseDecodesAllForms` urn, braces, raw_hex passed (new) |
+| T7 | 38-byte input: `Parse` reads only the middle 36 bytes (documented), `Validate` requires braces | `[…]`, `x…y`, `{…x`, `x…}` → `Parse` and `ParseBytes` return the UUID; `Validate` returns `ErrInvalidBracketedFormat` | unit | passed | `[ran: go test -count=1 -v -run '^TestParse' .]` `TestParse38ByteDelimiters` 4 subtests passed (new) |
+| T11 | No input makes the parser panic | the repo's `FuzzParse` and `FuzzParseBytes`, 10 s each | fuzz | passed | `[ran: go test -count=1 -run '^$' -fuzz '^FuzzParse$' -fuzztime 10s .]` `execs: 3372686`, `PASS`; `[ran: go test -count=1 -run '^$' -fuzz '^FuzzParseBytes$' -fuzztime 10s .]` `execs: 3131431`, `PASS` |
+| T12 | The callers of the parser reject what it rejects | `UnmarshalText` (marshal.go:18), `NullUUID.UnmarshalText` (null.go:90), `Scan` (sql.go:27) with the T4–T7 inputs | unit | not run | `[not run]` outside the request (Parse, ParseBytes, Validate) |
+
+The [full report](docs/example-report.md) also lists the command a hook refused, the weak assertions in the existing tests, and the test file Bogusz added.
+
 ## Install
 
 ```bash
