@@ -172,6 +172,7 @@ Checkout totals with discounts (api/internal/pricing).
 /bogusz explore edge cases for refunds
 /bogusz regression-test
 /bogusz report
+/bogusz test the pricing package --html                    # also writes a one-file HTML report
 /bogusz analyze-session last
 ```
 
@@ -186,8 +187,8 @@ Bogusz prints which profile it used, checks every fact against the current code,
 ## What it reads and writes
 
 - **Reads:** your code, and the profile. For `analyze-session`, and for the list of test runs in a report, it also reads Claude Code transcripts under `~/.claude/projects/`, read-only, and only those for sessions started inside the profile's roots.
-- **Writes:** `~/.bogusz/digests/<session id>.json` (the redacted digest of an analyzed session, one file per analysis), `~/.bogusz/reports/*.md`, and Playwright files under `~/.bogusz/ui/`. All of these are outside your repos. Two things can land in a repo: the profile, saved or edited only after you say yes, and the negative tests a security run adds, which it leaves uncommitted.
-- **Redaction** removes JWTs, bearer and vendor tokens, cloud keys, private keys, cookies, kubeconfig credentials, credentials in URLs and CLI flags, and secret-named keys and assignments. Bogusz runs it over session digests, saved reports and issue drafts. It is regex-based and **best effort**: review reports before you share them.
+- **Writes:** `~/.bogusz/digests/<session id>.json` (the redacted digest of an analyzed session, one file per analysis), `~/.bogusz/reports/*.md` (and a `.html` copy with `--html`), and Playwright files under `~/.bogusz/ui/`. All of these are outside your repos. Two things can land in a repo: the profile, saved or edited only after you say yes, and the negative tests a security run adds, which it leaves uncommitted.
+- **Redaction** removes JWTs, bearer and vendor tokens, cloud keys, private keys, cookies, kubeconfig credentials, credentials in URLs and CLI flags, and secret-named keys and assignments. Bogusz runs it over session digests, saved reports and issue drafts. It is regex-based and **best effort**: review reports before you share them. The HTML report embeds screenshots as they are; nothing redacts an image.
 - **Network:** Bogusz has no hooks or background jobs of its own; its network use comes from the commands it runs for you. A UI check installs Playwright and Chromium from npm, a load test sends traffic to a target you approved, and `gh` searches and files issues, with the screenshots you approved, filing only after you approve. A dev server it starts for a UI check is stopped when the check is done.
 - Claude Code deletes transcripts after `cleanupPeriodDays` (default 30).
 
@@ -203,7 +204,7 @@ Bogusz never runs destructive commands against production, never deploys or migr
 | `skills/bogusz/references/profile-template.md` | The profile sections |
 | `skills/bogusz/references/reporting.md` | Report, session-analysis and bug-issue templates |
 | `skills/bogusz/references/ui.md`, `perf.md`, `security.md`, `api.md` | Modes G, H, I and J, read only when a request routes there |
-| `skills/bogusz/scripts/sessions.py`, `redact.py` | Transcript lookup and parsing, test detection, redaction (Python stdlib) |
+| `skills/bogusz/scripts/sessions.py`, `redact.py`, `report_html.py` | Transcript lookup and parsing, test detection, redaction, HTML reports (Python stdlib) |
 | `agents/blazej-explorer.md` | Maps an area; discovers a project and drafts its profile |
 | `agents/blazej-analyst.md` | Critiques a past session from its digest |
 | `agents/blazej-ui.md` | Playwright flows with screenshots, console and network errors |

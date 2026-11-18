@@ -1,8 +1,8 @@
 ---
 name: bogusz
 description: QA testing orchestrator driven by a per-project test profile. Use for /bogusz, or when asked to test or plan tests for a feature, PR, API, or API client or SDK (including contract tests); validate a bug and file an issue; check a UI flow with screenshots; run load tests, benchmarks or security scans; or analyze a past session's testing.
-argument-hint: "<what to test> | bug <report> | ui <flow> | api <endpoint or client> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test"
-allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *), Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py *)
+argument-hint: "<what to test> | bug <report> | ui <flow> | api <endpoint or client> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test  [--html]"
+allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *), Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py *), Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/report_html.py *)
 ---
 
 # Bogusz
@@ -115,6 +115,8 @@ The report opens with `## Verdict`. Its results table carries every row of the p
 Take the commands and their statuses from this session's own record, not from memory: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py tests ${CLAUDE_SESSION_ID} --root <root>` prints one JSON line per test run (`--root` as in Session analysis). A run it marks `no_tests`, `blocked` or `not_completed` is never a pass. `unknown` means the script could not read that runner's summary: read the output yourself and quote the summary line you relied on. If the command fails or `python3` is missing, work from memory and say so under `## Known limitations`.
 
 Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py <file>` rewrites it in place and prints how many values it replaced. Then Read the file and print that redacted text. The script knows credential shapes only and is best effort. If `python3` is missing, redact by hand and say so.
+
+When the request has `--html`, also render the redacted report as a single HTML page: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/report_html.py <file>` writes `<file>.html` next to it and prints its path. Name that path in your reply. The page embeds every screenshot the report names by file path, and screenshots are not redacted: Read each one before you say the page is ready to share. Skip this for bug drafts, which become issue bodies. If `python3` is missing, say the HTML was not made.
 
 ## Session analysis
 
