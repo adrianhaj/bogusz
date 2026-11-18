@@ -1,6 +1,6 @@
 {
   "name": "bogusz",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Bogusz: a testing orchestrator with Błażej subagents, per-project profiles and session analysis.",
   "author": {
     "name": "adrianhaj"
