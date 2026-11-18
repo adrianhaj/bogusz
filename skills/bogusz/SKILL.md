@@ -116,7 +116,7 @@ Take the commands and their statuses from this session's own record, not from me
 
 Redact every file you save under `~/.bogusz/reports/`: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py <file>` rewrites it in place and prints how many values it replaced. Then Read the file and print that redacted text. The script knows credential shapes only and is best effort. If `python3` is missing, redact by hand and say so.
 
-When the request has `--html`, also render the redacted report as a single HTML page: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/report_html.py <file>` writes `<file>.html` next to it and prints its path. Name that path in your reply. The page embeds every screenshot the report names by file path, and screenshots are not redacted: Read each one before you say the page is ready to share. Skip this for bug drafts, which become issue bodies. If `python3` is missing, say the HTML was not made.
+When the request has `--html`, also render the redacted report as a single HTML page: `python3 -I ${CLAUDE_SKILL_DIR}/scripts/report_html.py <file>` writes the same name with an `.html` extension next to it and prints its path. Name that path in your reply. The page embeds every image in a Screenshot column or written as `![alt](path)`, and screenshots are not redacted: Read each one before you say the page is ready to share. Skip this for bug drafts, which become issue bodies. If `python3` is missing, say the HTML was not made.
 
 ## Session analysis
 

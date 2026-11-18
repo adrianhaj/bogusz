@@ -9,13 +9,15 @@ import hashlib
 import html
 import re
 import sys
+import textwrap
 from pathlib import Path
 
 PILLS = {"passed", "failed", "skipped", "blocked", "not run", "covered", "partial", "missing", "n/a",
          "confirmed", "not reproduced", "not tested"}
 STATUS_ORDER = ["passed", "failed", "skipped", "blocked", "not run"]
+STATUS_WORD = re.compile(r"(%s)\b" % "|".join(sorted(map(re.escape, PILLS), key=len, reverse=True)))
 INLINE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*(.+?)\*\*"
-                    r"|\[(not run|interpretation|assumption|guess|REDACTED:\w+)\]")
+                    r"|\[(not run|ran: [^\]]+|interpretation|assumption|guess|REDACTED:\w+)\]")
 BLOCK_START = re.compile(r"#{1,4} |```|\||>|\s*(?:[-*]|\d+\.) ")
 
 
@@ -39,7 +41,10 @@ def image_mime(data):
     return None
 
 
-def embed(path, base):
+_shots = {}  # resolved path -> id of its first <img>, so a repeat links to it instead of embedding it again
+
+
+def embed(path, base, alt=None):
     """An <img> with the file inlined, or None when path is not a readable image file."""
     path = path.strip()
     if not re.search(r"\.(png|jpe?g|gif|webp)$", path, re.I):
@@ -48,12 +53,16 @@ def embed(path, base):
     p = p if p.is_absolute() else base / p
     if not p.is_file():
         return None
+    p = p.resolve()
+    if p in _shots:
+        return '<a href="#%s">%s</a>' % (_shots[p], esc(alt or p.name))
     data = p.read_bytes()
     mime = image_mime(data)  # only real images go in, so a misnamed text file never lands in the page
     if not mime:
         return None
     src = "data:%s;base64,%s" % (mime, base64.b64encode(data).decode())
-    return '<img class="shot" src="%s" alt="%s" title="%s">' % (src, esc(p.name), esc(path))
+    _shots[p] = "shot-%d" % (len(_shots) + 1)
+    return '<img id="%s" class="shot" src="%s" alt="%s" title="%s">' % (_shots[p], src, esc(alt or p.name), esc(path))
 
 
 def safe_href(url):
@@ -67,19 +76,21 @@ def inline_text(s, base):
         pos = m.end()
         alt, src, text, href, bold, tag = m.groups()
         if src is not None:
-            out.append(embed(src, base) or esc(m.group(0)))
+            out.append(embed(src, base, alt) or esc(m.group(0)))
         elif text is not None:
             out.append('<a href="%s">%s</a>' % (esc(href), esc(text)) if safe_href(href) else esc(text))
         elif bold is not None:
             out.append("<strong>%s</strong>" % esc(bold))
         else:
-            kind = "nr" if tag == "not run" else "red" if tag.startswith("REDACTED") else "int"
+            kind = ("nr" if tag == "not run" else "ran" if tag.startswith("ran:")
+                    else "red" if tag.startswith("REDACTED") else "int")
             out.append('<span class="t %s">%s</span>' % (kind, esc(m.group(0))))
     out.append(esc(s[pos:]))
     return "".join(out)
 
 
-def inline(s, base):
+def inline(s, base, shots=False):
+    """shots: embed images named in code spans (Screenshot columns only, so other paths never get inlined)."""
     out = []
     for i, part in enumerate(re.split(r"(`[^`]*`)", s)):
         if i % 2 == 0:
@@ -88,7 +99,7 @@ def inline(s, base):
         code = part[1:-1]
         kind = ("ran" if code.startswith("[ran:") else "nr" if code.startswith("[not run")
                 else "int" if code.startswith(("[interpretation", "[assumption")) else "")
-        out.append(embed(code, base) or ('<code class="t %s">' % kind if kind else "<code>") + esc(code) + "</code>")
+        out.append(shots and embed(code, base) or ('<code class="t %s">' % kind if kind else "<code>") + esc(code) + "</code>")
     return "".join(out)
 
 
@@ -114,17 +125,28 @@ def cells(line):
     return out
 
 
-def cell_html(c, base):
-    if c.lower() in PILLS:
-        return '<span class="st %s">%s</span>' % (slug(c), esc(c))
-    return embed(c, base) or inline(c, base)
+def status(c):
+    """The status a Status cell starts with, ignoring markup: "**failed** (flaky)" -> "failed"."""
+    s = re.sub(r"[*`]", "", c).strip().lower()
+    m = STATUS_WORD.match(s)
+    return m.group(1) if m else s
+
+
+def cell_html(c, base, st=None, shot=False):
+    st = st or c.lower()
+    if st in PILLS:
+        return '<span class="st %s">%s</span>' % (slug(st), esc(re.sub(r"[*`]", "", c).strip()))
+    if shot:
+        return embed(c, base) or inline(c, base, shots=True)
+    return inline(c, base)
 
 
 def render(md, base):
     """Returns (title, meta, body_html, nav, status_counts)."""
     lines = re.sub(r"<!--.*?-->", "", md, flags=re.S).splitlines()
     title, meta, out, nav, counts = "Bogusz report", "", [], [], {}
-    sec, ids, i = None, set(), 0
+    sec, ids, i, counted = None, set(), 0, False
+    _shots.clear()
     while i < len(lines):
         line = lines[i]
         if not line.strip():
@@ -160,6 +182,9 @@ def render(md, base):
         elif line.startswith("|") and i + 1 < len(lines) and re.match(r"\s*\|?\s*:?-{3,}", lines[i + 1]):
             head = cells(line)
             col = next((k for k, h in enumerate(head) if h.lower() == "status"), None)
+            shots = {k for k, h in enumerate(head) if h.lower().startswith("screenshot")}
+            kpi = col is not None and not counted  # only the first Status table (Results) feeds the KPIs
+            counted = counted or kpi
             i += 2
             rows = []
             while i < len(lines) and lines[i].startswith("|"):
@@ -168,12 +193,12 @@ def render(md, base):
             seen = []
             body = []
             for r in rows:
-                s = r[col].lower() if col is not None and col < len(r) else ""
-                if col is not None:
+                s = status(r[col]) if col is not None and col < len(r) else ""
+                if kpi:
                     counts[s] = counts.get(s, 0) + 1
-                    seen += [] if s in seen else [s]
-                body.append('<tr%s>%s</tr>' % (' data-s="%s"' % esc(s) if s else "",
-                                               "".join("<td>%s</td>" % cell_html(c, base) for c in r)))
+                seen += [] if not s or s in seen else [s]
+                body.append('<tr%s>%s</tr>' % (' data-s="%s"' % esc(s) if s else "", "".join(
+                    "<td>%s</td>" % cell_html(c, base, s if k == col else None, k in shots) for k, c in enumerate(r))))
             if sec:
                 sec[2] += len(rows)
             if col is not None and len(seen) > 1:
@@ -184,11 +209,18 @@ def render(md, base):
                 "".join('<th scope="col">%s</th>' % inline(h, base) for h in head), "".join(body)))
         elif re.match(r"\s*(?:[-*]|\d+\.) ", line):
             tag = "ol" if re.match(r"\s*\d+\.", line) else "ul"
-            items = []
+            items, ind = [], len(line) - len(line.lstrip())
             while i < len(lines) and lines[i].strip() and (not BLOCK_START.match(lines[i]) or
                                                             re.match(r"\s*(?:[-*]|\d+\.) ", lines[i])):
+                if lines[i].lstrip().startswith("```"):  # a code block nested in the item above
+                    j = i + 1
+                    while j < len(lines) and not lines[j].lstrip().startswith("```"):
+                        j += 1
+                    items[-1] += "<pre><code>%s</code></pre>" % esc(textwrap.dedent("\n".join(lines[i + 1:j])))
+                    i = j + 1
+                    continue
                 item = re.match(r"(\s*)(?:[-*]|\d+\.) (.*)", lines[i])
-                if item and (not item.group(1) or not items):
+                if item and len(item.group(1)) <= ind:
                     items.append(inline(item.group(2), base))
                 else:  # continuation or nested item: keep it with the item above
                     items[-1] += "<br>" + inline(lines[i].strip(), base)
@@ -314,7 +346,12 @@ def page(md, base):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit("usage: report_html.py <report.md>")
     src = Path(sys.argv[1]).expanduser()
     dst = src.with_suffix(".html")
-    dst.write_text(page(src.read_text(), src.parent))
+    try:
+        dst.write_text(page(src.read_text(encoding="utf-8"), src.parent), encoding="utf-8")
+    except OSError as e:
+        sys.exit("report_html.py: %s" % e)
     print(dst)
