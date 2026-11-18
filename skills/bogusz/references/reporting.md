@@ -48,6 +48,7 @@ Add whichever applies under `## Results`:
 ```markdown
 ### UI (<base URL>, <viewport>)
 | # | Step | Expected | Result | Screenshot |
+<Screenshot: the file path alone, e.g. `~/.bogusz/ui/<slug>/01-login.png`, so the HTML version can embed it>
 Console errors / failed requests: <list or "none">
 Traces of failed steps: <path to each trace.zip, or "none">
 <a before/after run uses: | # | Step | Before | After | Differs? | Screenshots |>
