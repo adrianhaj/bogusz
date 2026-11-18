@@ -1,7 +1,7 @@
 ---
 name: bogusz
-description: QA testing orchestrator driven by a per-project test profile. Use for /bogusz, or when asked to test or plan tests for a feature, PR or API; validate a bug and file an issue; check a UI flow with screenshots; run load tests, benchmarks or security scans; or analyze a past session's testing.
-argument-hint: "<what to test> | bug <report> | ui <flow> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test"
+description: QA testing orchestrator driven by a per-project test profile. Use for /bogusz, or when asked to test or plan tests for a feature, PR, API, or API client or SDK (including contract tests); validate a bug and file an issue; check a UI flow with screenshots; run load tests, benchmarks or security scans; or analyze a past session's testing.
+argument-hint: "<what to test> | bug <report> | ui <flow> | api <endpoint or client> | perf <target> | security <area> | setup | analyze-session last|<id> | report | regression-test"
 allowed-tools: Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/sessions.py *), Bash(python3 -I ${CLAUDE_SKILL_DIR}/scripts/redact.py *)
 ---
 
@@ -33,6 +33,7 @@ Say which profile you used in one line (`profile: <path>`). Check every fact you
 | `ui …`, "screenshot", "check the page/flow" | Mode G: Read `${CLAUDE_SKILL_DIR}/references/ui.md` and follow it |
 | `perf …`, "load test", "latency", "benchmark" | Mode H: Read `${CLAUDE_SKILL_DIR}/references/perf.md` and follow it |
 | `security …`, "vulnerabilities", "authz", "pentest this" | Mode I: Read `${CLAUDE_SKILL_DIR}/references/security.md` and follow it |
+| `api …`, "test the API/endpoint/client/SDK", "contract test" | Mode J: Read `${CLAUDE_SKILL_DIR}/references/api.md` and follow it |
 | `explore …`, "edge cases for …" | Mode A, then Mode B |
 | `plan …`, "plan tests for …" | Mode A, then Mode B. Run no tests |
 | `regression-test` | Mode B on the current branch's diff, then Mode C, E. The diff is `git diff origin/<base>...HEAD`, where `<base>` is the open PR's base branch (`gh pr view --json baseRefName`) or, with no PR, the default branch |
@@ -107,7 +108,7 @@ Input: a bug report, an issue or chat text, a failing behaviour Bogusz found, or
 
 ## Mode E: report
 
-Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write it to `~/.bogusz/reports/YYYY-MM-DD-<kind>-<slug>.md` (`mkdir -p` first), where `<kind>` is `test`, `ui`, `perf`, `security`, `bug` or `session`. If that file exists, add `-2`, `-3`, … to the name instead of replacing it.
+Fill the test report in `${CLAUDE_SKILL_DIR}/references/reporting.md` and write it to `~/.bogusz/reports/YYYY-MM-DD-<kind>-<slug>.md` (`mkdir -p` first), where `<kind>` is `test`, `ui`, `api`, `perf`, `security`, `bug` or `session`. If that file exists, add `-2`, `-3`, … to the name instead of replacing it.
 
 The report opens with `## Verdict`. Its results table carries every row of the plan, including the cases that did not run. Commands appear exactly as run, with secrets left out. Every result is tagged `[ran: <command>]` or `[not run]`.
 

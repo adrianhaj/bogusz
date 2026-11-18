@@ -41,7 +41,7 @@ Mode B writes this table. The report's results table reuses its rows and IDs.
 ## Recommendations
 ```
 
-### Extra sections for UI, performance and security runs
+### Extra sections for UI, API, performance and security runs
 
 Add whichever applies under `## Results`:
 
@@ -51,6 +51,10 @@ Add whichever applies under `## Results`:
 Console errors / failed requests: <list or "none">
 Traces of failed steps: <path to each trace.zip, or "none">
 <a before/after run uses: | # | Step | Before | After | Differs? | Screenshots |>
+
+### API / client (<base URL, or "stubbed transport">, spec <path or "none">)
+| # | Operation (method + path, RPC or client method) | Input | Expected (from spec or docs) | Actual | Evidence |
+Spec drift: <operations where the spec and the code disagree, or "none">
 
 ### Performance
 | Metric | Base | Change | Δ | Runs |

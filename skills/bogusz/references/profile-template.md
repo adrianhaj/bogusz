@@ -20,6 +20,9 @@ Prefer the commands CI runs. Include the narrowest form (one package, one file, 
 |---|---|---|
 | UI dev server | `npm run dev` → `http://localhost:5173` | |
 | UI E2E | `npx playwright test <spec>` | |
+| API spec | `api/openapi.yaml` (or `*.proto`, `schema.graphql`) | |
+| API local server | `uvicorn app.main:app --port 8000` → `http://localhost:8000` | |
+| API client / SDK | `clients/python`: `uv run pytest tests/<file>` | |
 | Load | `k6 run load/smoke.js` | |
 | Scanners | `govulncheck ./...`, `npm audit --omit=dev` | |
 
