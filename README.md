@@ -1,6 +1,6 @@
 # Bogusz
 
-A Claude Code plugin that tests your project the way a senior QA engineer would. Bogusz reads the code first, plans the tests, runs the narrowest ones that answer the question, investigates failures and reports only what the evidence shows. It can turn a confirmed bug into a GitHub issue with repro steps, drive a UI with Playwright screenshots, run benchmarks, load tests and security scans, and analyze a past Claude Code session to show which tests actually ran.
+A Claude Code plugin that tests your project the way a senior QA engineer would. Bogusz reads the code first, plans the tests, runs the narrowest ones that answer the question, investigates failures and reports only what the evidence shows. It can turn a confirmed bug into a GitHub issue with repro steps, test any HTTP, GraphQL or gRPC API and its client libraries against their spec, drive a UI with Playwright screenshots, run benchmarks, load tests and security scans, and analyze a past Claude Code session to show which tests actually ran.
 
 Its helpers are the Błażej subagents: Explorer, Analyst, UI and Security.
 
@@ -66,7 +66,7 @@ One absolute folder per line, no tag: the repo this profile covers, or, for seve
 ## Repos and test commands
 Table: repo | language | scoped test command | needs (Docker, services, setup) | source.
 ## UI, performance and security entry points
-Table: kind (UI dev server, UI E2E, load, benchmarks, scanners) | command | source.
+Table: kind (UI dev server, UI E2E, API spec (OpenAPI, proto, GraphQL schema), API local server, API client or SDK, load, benchmarks, scanners) | command | source.
 ## Cross-repo / API consumers
 Who builds against this project's schemas, protos, OpenAPI specs or shared libraries. "none" for a single self-contained repo.
 ## E2E
@@ -122,6 +122,8 @@ A fictional shop with a Go API, a React UI and Postgres in Docker Compose:
 |---|---|---|
 | UI dev server | `cd web && npm run dev` → http://localhost:5173 | web/package.json:7 |
 | UI E2E | `cd web && npx playwright test <spec>` | web/playwright.config.ts |
+| API spec | `api/openapi.yaml` | api/openapi.yaml |
+| API local server | `go run ./cmd/api` → http://localhost:8080 | api/README.md |
 | Load | `k6 run load/checkout.js` | load/checkout.js |
 | Scanners | `govulncheck ./...` (api), `npm audit --omit=dev` (web) | .github/workflows/scan.yml:12 |
 
@@ -163,6 +165,8 @@ Checkout totals with discounts (api/internal/pricing).
 /bogusz investigate why web/src/cart.test.ts fails
 /bogusz bug discount is applied twice for repeat customers   # reproduce, verdict, draft issue; files only on your yes
 /bogusz ui log in and check out one item                     # Playwright screenshots in ~/.bogusz/ui/<slug>/
+/bogusz api orders endpoints against the OpenAPI spec        # happy path, validation, auth, errors, paging
+/bogusz api the Python client's retry and error handling     # stubbed transport, then against a local server
 /bogusz perf checkout endpoint on local                      # benchmarks or k6, p50/p95/p99
 /bogusz security authz on the orders API                     # scanners + negative authz tests
 /bogusz explore edge cases for refunds
@@ -198,7 +202,7 @@ Bogusz never runs destructive commands against production, never deploys or migr
 | `skills/bogusz/SKILL.md` | Bogusz: profile lookup, routing, modes, safety |
 | `skills/bogusz/references/profile-template.md` | The profile sections |
 | `skills/bogusz/references/reporting.md` | Report, session-analysis and bug-issue templates |
-| `skills/bogusz/references/ui.md`, `perf.md`, `security.md` | Modes G, H and I, read only when a request routes there |
+| `skills/bogusz/references/ui.md`, `perf.md`, `security.md`, `api.md` | Modes G, H, I and J, read only when a request routes there |
 | `skills/bogusz/scripts/sessions.py`, `redact.py` | Transcript lookup and parsing, test detection, redaction (Python stdlib) |
 | `agents/blazej-explorer.md` | Maps an area; discovers a project and drafts its profile |
 | `agents/blazej-analyst.md` | Critiques a past session from its digest |
