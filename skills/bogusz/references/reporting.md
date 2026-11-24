@@ -58,9 +58,11 @@ Traces of failed steps: <path to each trace.zip, or "none">
 Spec drift: <operations where the spec and the code disagree, or "none">
 
 ### Performance
-| Metric | Base | Change | Δ | Runs |
-<ns/op, B/op, allocs/op from -count=6, or k6 p50/p95/p99, error rate, RPS>
-Load: <tool, VUs, duration, target>. Noise note: <spread across runs>
+| Point | Metric | Base (median, min–max) | Change (median, min–max) | Δ | Runs | CPU / mem |
+<Point: one parameter combination, e.g. `replicas=2 workers=4`, or "—". Metric: ns/op, B/op, allocs/op from -count=6, or p50/p95/p99, error rate, RPS>
+Load: <tool or harness, VUs, duration, target, where the load comes from>. Noise: <spread across runs, in %>
+Parity: <what was compared and the tolerance: match / mismatch, or "n/a">
+Baseline: <file or report compared against, or "none">
 
 ### Security
 | Tool / check | Findings (crit/high/med/low) | Notable | Evidence |

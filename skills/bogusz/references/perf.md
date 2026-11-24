@@ -1,9 +1,14 @@
 # Mode H: performance
 
 - **Code level:** use the stack's benchmark tool on the base and on the change, with repeats. Build the base in a separate worktree (`git worktree add <tmp dir> <base>`, removed afterwards); never stash, switch branches or check out files in the user's tree. For Go: `go test -bench=<Name> -benchmem -run='^$' -count=6 ./<pkg>/...`, compared with `benchstat` if it is installed. For Python: `pytest-benchmark` or `pyperf` if the project uses them. For JS: the project's own bench script. Report per-op time and allocations with the deltas.
+- **Harness first:** if the profile names a `Bench harness`, run it and report on its output; don't write a k6 script beside it. The harness owns the project-specific parts (where the load runs, image builds, cluster setup). Read its output files, not only its console summary.
 - **Load:**
-  - Use the load script from the profile (for example a k6 or Locust file) if there is one; otherwise propose a minimal k6 script and show it before running.
+  - With no harness, use the load script from the profile (for example a k6 or Locust file) if there is one; otherwise propose a minimal k6 script and show it before running.
   - Run it only against a target the profile's `## Environments` marks safe, a local one, or one the user named in this request.
-  - State the virtual users, duration and target first. Load on a shared environment needs an explicit yes, because it affects other people.
+  - State the virtual users, duration, target and where the load comes from (this machine, inside the cluster, CI) first. When the load crosses a proxy, ingress or WAN the production callers don't, say the latency includes that hop. Load on a shared environment needs an explicit yes, because it affects other people.
   - Report p50/p95/p99 latency, the error rate, the throughput and the thresholds.
-- **Baselines:** compare with the previous `*-perf-<slug>.md` report in `~/.bogusz/reports/` when there is one. Never call a single run a regression or an improvement: noise needs repeated runs.
+- **Matrix:** when the run varies parameters (replicas, workers, payload size, implementation), each combination is one point. Every rule below applies per point.
+- **Repeats:** at least 3 runs per point for load and harness runs. Report the median and the min–max range. Call a difference a regression or an improvement only when the base and change ranges don't overlap; otherwise report it as within noise, with the spread in %. Never call a single run a regression or an improvement.
+- **Parity before speed:** when the run compares two implementations or variants of the same thing, first check that they return the same results on the same inputs, exactly or within a tolerance you state. A mismatch fails the comparison, however fast the faster one is.
+- **Server-side metrics:** if the profile names `Resource metrics` (a sidecar, `kubectl top`, the app's own timing or stage log), report CPU and memory of the system under test and the per-stage time next to the latency. Otherwise list them under `## Known limitations`.
+- **Baselines:** compare with the profile's `Baseline` (a results file in the repo) when there is one, otherwise with the previous `*-perf-<slug>.md` report in `~/.bogusz/reports/`. Propose new results for the baseline file as a dated column; edit it only when the user asks.
