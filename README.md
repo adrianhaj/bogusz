@@ -66,7 +66,7 @@ One absolute folder per line, no tag: the repo this profile covers, or, for seve
 ## Repos and test commands
 Table: repo | language | scoped test command | needs (Docker, services, setup) | source.
 ## UI, performance and security entry points
-Table: kind (UI dev server, UI E2E, API spec (OpenAPI, proto, GraphQL schema), API local server, API client or SDK, load, benchmarks, bench harness, resource metrics, baseline results file, scanners) | command | source.
+Table: kind (UI dev server, UI E2E, API spec (OpenAPI, proto, GraphQL schema), API local server, API client or SDK, load, benchmarks, Bench harness, Resource metrics, Baseline (a results file in the repo), scanners) | command | source.
 ## Cross-repo / API consumers
 Who builds against this project's schemas, protos, OpenAPI specs or shared libraries. "none" for a single self-contained repo.
 ## E2E

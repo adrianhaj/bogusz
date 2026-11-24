@@ -59,7 +59,7 @@ Spec drift: <operations where the spec and the code disagree, or "none">
 
 ### Performance
 | Point | Metric | Base (median, min–max) | Change (median, min–max) | Δ | Runs | CPU / mem |
-<Point: one parameter combination, e.g. `replicas=2 workers=4`, or "—". Metric: ns/op, B/op, allocs/op from -count=6, or p50/p95/p99, error rate, RPS>
+<Point: one parameter combination, e.g. `replicas=2 workers=4`, or "—". Metric: ns/op, B/op, allocs/op from -count=6 (benchstat rows: median ± CI and p-value instead of min–max), or p50/p95/p99, error rate, RPS>
 Load: <tool or harness, VUs, duration, target, where the load comes from>. Noise: <spread across runs, in %>
 Parity: <what was compared and the tolerance: match / mismatch, or "n/a">
 Baseline: <file or report compared against, or "none">
