@@ -24,6 +24,9 @@ Prefer the commands CI runs. Include the narrowest form (one package, one file, 
 | API local server | `uvicorn app.main:app --port 8000` → `http://localhost:8000` | |
 | API client / SDK | `clients/python`: `uv run pytest tests/<file>` | |
 | Load | `k6 run load/smoke.js` | |
+| Bench harness | `./bench/bench.sh --repeat 3` → `bench/out/*.csv` | |
+| Resource metrics | `kubectl top pod -l app=<name> --containers`, or the app's stage-timing log | |
+| Baseline | `bench/RESULTS.md` | |
 | Scanners | `govulncheck ./...`, `npm audit --omit=dev` | |
 
 ## Cross-repo / API consumers
