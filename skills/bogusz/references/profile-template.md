@@ -25,7 +25,7 @@ Prefer the commands CI runs. Include the narrowest form (one package, one file, 
 | API client / SDK | `clients/python`: `uv run pytest tests/<file>` | |
 | Load | `k6 run load/smoke.js` | |
 | Bench harness | `./bench/bench.sh --repeat 3` → `bench/out/*.csv` | |
-| Resource metrics | `kubectl top pod -l app=<name> --containers`, or the app's stage-timing log | |
+| Resource metrics | `kubectl top pod -l app=<name> --containers` sampled during the run, or the app's stage-timing log | |
 | Baseline | `bench/RESULTS.md` | |
 | Scanners | `govulncheck ./...`, `npm audit --omit=dev` | |
 
